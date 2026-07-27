@@ -1,0 +1,62 @@
+
+{
+  name: [32m'My Networking App'[39m,
+  slug: [32m'personal-networking-app'[39m,
+  version: [32m'1.0.0'[39m,
+  orientation: [32m'portrait'[39m,
+  icon: [32m'./assets/images/iconolhh.png'[39m,
+  scheme: [32m'personalnetworkingapp'[39m,
+  userInterfaceStyle: [32m'automatic'[39m,
+  newArchEnabled: [33mtrue[39m,
+  plugins: [
+    [32m'expo-router'[39m,
+    [
+      [32m'expo-splash-screen'[39m,
+      {
+        image: [32m'./assets/images/iconolhh.png'[39m,
+        imageWidth: [33m200[39m,
+        resizeMode: [32m'contain'[39m,
+        backgroundColor: [32m'#ffffff'[39m,
+        dark: {
+          backgroundColor: [32m'#000000'[39m
+        }
+      }
+    ]
+  ],
+  description: [90mundefined[39m,
+  sdkVersion: [32m'54.0.0'[39m,
+  platforms: [
+    [32m'ios'[39m,
+    [32m'android'[39m,
+    [32m'web'[39m
+  ],
+  ios: {
+    supportsTablet: [33mtrue[39m
+  },
+  android: {
+    edgeToEdgeEnabled: [33mtrue[39m,
+    predictiveBackGestureEnabled: [33mfalse[39m,
+    package: [32m'com.anonymous.personalnetworkingapp'[39m,
+    adaptiveIcon: {
+      backgroundColor: [32m'#E6F4FE'[39m,
+      foregroundImage: [32m'./assets/images/android-icon-foreground.png'[39m,
+      backgroundImage: [32m'./assets/images/android-icon-background.png'[39m,
+      monochromeImage: [32m'./assets/images/android-icon-monochrome.png'[39m
+    }
+  },
+  web: {
+    output: [32m'static'[39m,
+    favicon: [32m'./assets/images/iconolhh.png'[39m
+  },
+  experiments: {
+    typedRoutes: [33mtrue[39m,
+    reactCompiler: [33mtrue[39m
+  },
+  extra: {
+    router: {}
+  },
+  androidStatusBar: {
+    backgroundColor: [32m'#ffffff'[39m
+  }
+}
+
