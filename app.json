@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "My Networking App",
-    "slug": "app-my-networking",
+    "name": "NetworkingApp",
+    "slug": "networking-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/iconolhh.png",
-    "scheme": "personalnetworkingapp",
+    "scheme": "networkingapp",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
@@ -46,7 +46,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "44cb32f7-8373-4829-a585-20eaff9f58d8"
+        "projectId": "28a4c1f5-c940-437d-8f0e-f80fe9106eff"
       }
     },
     "owner": "malejasans-organization"
