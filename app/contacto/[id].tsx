@@ -16,11 +16,12 @@ import { useNotes } from '../../context/NotesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { ReminderModal } from '../../components/ReminderModal';
 import { Recordatorio, Nota } from '../../constants/MockData';
+import { formatDate } from '../../utils/date';
 
 export default function ContactDetailScreen() {
   const { id } = useLocalSearchParams();
   const { contacts, deleteContact, updateContact } = useContacts();
-  const { companies } = useCompanies();
+  const { companies, syncContactCompanies } = useCompanies();
   const { getRemindersForContact, addReminder, updateReminder, deleteReminder } = useReminders();
   const { getNotesForContact, addNote, updateNote, deleteNote } = useNotes();
   const router = useRouter();
@@ -139,13 +140,6 @@ export default function ContactDetailScreen() {
     );
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const day = date.getDate();
-    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    return `${day} ${monthNames[date.getMonth()]} ${date.getFullYear()} - ${timeString}`;
-  };
 
   const handleDelete = () => {
     Alert.alert(
@@ -475,15 +469,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  notesBox: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  notesText: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
+
   noDataText: {
     fontStyle: 'italic',
   },

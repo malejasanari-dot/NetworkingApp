@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Contact, MOCK_CONTACTS } from '../constants/MockData';
+import { generateId } from '../utils/id';
 
 interface ContactsContextData {
   contacts: Contact[];
@@ -41,7 +42,7 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const addContact = async (newContactData: Omit<Contact, 'id' | 'dateAdded'>): Promise<Contact> => {
     const newContact: Contact = {
       ...newContactData,
-      id: Date.now().toString(),
+      id: generateId(),
       dateAdded: new Date().toISOString(),
     };
     
@@ -74,7 +75,7 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (!isDuplicate) {
           const newContact: Contact = {
             ...data,
-            id: (Date.now() + index).toString(),
+            id: generateId(index),
             dateAdded: now,
           };
           updatedContacts.unshift(newContact);

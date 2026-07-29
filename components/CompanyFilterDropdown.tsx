@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../context/CompaniesContext';
 import { useThemeColor } from '../hooks/use-theme-color';
@@ -18,7 +18,6 @@ export function CompanyFilterDropdown({ value, onChange }: CompanyFilterDropdown
   const primaryColor = useThemeColor({}, 'primary');
   const cardColor = useThemeColor({}, 'card');
   const borderColor = useThemeColor({}, 'border');
-  const background = useThemeColor({}, 'background');
 
   const handleSelect = (id: string) => {
     onChange(id);

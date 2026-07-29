@@ -15,6 +15,7 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from '../hooks/use-theme-color';
 import { Recordatorio } from '../constants/MockData';
+import { formatDateString, formatTimeString } from '../utils/date';
 
 interface ReminderModalProps {
   isVisible: boolean;
@@ -80,15 +81,6 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     onClose();
   };
 
-  const formatDateString = (date: Date) => {
-    const day = date.getDate();
-    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    return `${day} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-  };
-
-  const formatTimeString = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
 
   return (
     <Modal

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
@@ -6,8 +6,7 @@ import Animated, {
   useAnimatedStyle, 
   withSpring, 
   withSequence,
-  withTiming,
-  interpolateColor
+  withTiming
 } from 'react-native-reanimated';
 import { Contact } from '../constants/MockData';
 import { useReminders } from '../context/RemindersContext';
@@ -19,10 +18,9 @@ interface ContactCardProps {
   onToggleFavorite?: () => void;
 }
 
-export const ContactCard: React.FC<ContactCardProps> = ({ contact, onPress, onToggleFavorite }) => {
+export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, onPress, onToggleFavorite }) => {
   const { getRemindersForContact } = useReminders();
   const cardColor = useThemeColor({}, 'card');
-  const textColor = useThemeColor({}, 'text');
   const secondaryText = useThemeColor({}, 'secondaryText');
   const primaryColor = useThemeColor({}, 'primary');
   const borderColor = useThemeColor({}, 'border');
@@ -95,9 +93,8 @@ export const ContactCard: React.FC<ContactCardProps> = ({ contact, onPress, onTo
       </View>
     </TouchableOpacity>
   );
-};
+});
 
-// Removed isDarkColor as it is no longer strictly needed here
 
 
 const styles = StyleSheet.create({

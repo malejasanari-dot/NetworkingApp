@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { Contact } from '../constants/MockData';
+import { generateId } from '../utils/id';
 
 export interface Company {
   id: string;
@@ -58,7 +59,7 @@ export const CompaniesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const newCompany: Company = {
         ...newCompanyData,
-        id: Date.now().toString(),
+        id: generateId(),
         contactIds: [],
       };
       
@@ -121,7 +122,7 @@ export const CompaniesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (existingIndex === -1) {
           // Crear nueva empresa si no existe
           const newCompany: Company = {
-            id: (Date.now() + createdCount).toString(),
+            id: generateId(createdCount),
             name: companyMaps.get(name.toLowerCase())?.[0] || name, // Usar el nombre original preservando mayúsculas/minúsculas de uno de los contactos
             sector: '',
             notes: '',

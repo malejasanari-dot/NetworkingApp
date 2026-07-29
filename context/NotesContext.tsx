@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Nota } from '../constants/MockData';
 import { useContacts } from './ContactsContext';
+import { generateId } from '../utils/id';
 
 interface NotesContextData {
   notes: Nota[];
@@ -88,7 +89,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addNote = async (data: Omit<Nota, 'id'>) => {
     const newNote: Nota = {
       ...data,
-      id: Date.now().toString(),
+      id: generateId(),
     };
     const currentNotes = Array.isArray(notes) ? notes : [];
     const updated = [newNote, ...currentNotes];

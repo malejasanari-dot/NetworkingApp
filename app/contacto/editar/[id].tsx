@@ -3,9 +3,9 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, KeyboardA
 import { ControlledInput } from '../../../components/ui/controlled-input';
 import { CompanySelector } from '../../../components/CompanySelector';
 import { useCompanies } from '../../../context/CompaniesContext';
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useContacts } from '../../../context/ContactsContext';
+import { parseTags, formatTags } from '../../../utils/tags';
 
 export default function EditarScreen() {
   const router = useRouter();
@@ -28,7 +28,7 @@ export default function EditarScreen() {
       setPhone(contact.phone || '');
       setEmpresaActual(contact.empresaActual || '');
       setEmpresasAnteriores(contact.empresasAnteriores || []);
-      setTagsInput(contact.tags ? contact.tags.join(', ') : '');
+      setTagsInput(formatTags(contact.tags));
       setFavorito(contact.favorito || false);
     }
   }, [contact]);
@@ -50,7 +50,7 @@ export default function EditarScreen() {
       return;
     }
 
-    const tagsArray = tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    const tagsArray = parseTags(tagsInput);
 
     const compName = empresaActual ? companies.find(c => c.id === empresaActual)?.name || '' : '';
 
@@ -198,10 +198,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1A1A1A',
   },
-  textArea: {
-    height: 100,
-    paddingTop: 14,
-  },
+
   switchGroup: {
     flexDirection: 'row',
     justifyContent: 'space-between',

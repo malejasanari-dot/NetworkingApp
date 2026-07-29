@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Recordatorio } from '../constants/MockData';
+import { generateId } from '../utils/id';
 
 interface RemindersContextData {
   reminders: Recordatorio[];
@@ -48,7 +49,7 @@ export const RemindersProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const addReminder = async (data: Omit<Recordatorio, 'id'>) => {
     const newReminder: Recordatorio = {
       ...data,
-      id: Date.now().toString(),
+      id: generateId(),
     };
     const updated = [newReminder, ...reminders];
     setReminders(updated);

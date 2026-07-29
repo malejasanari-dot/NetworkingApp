@@ -13,7 +13,6 @@ export default function FavoritosScreen() {
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
-  const textColor = useThemeColor({}, 'text');
   const secondaryText = useThemeColor({}, 'secondaryText');
   const primaryColor = useThemeColor({}, 'primary');
   const accent2 = useThemeColor({}, 'accent2');

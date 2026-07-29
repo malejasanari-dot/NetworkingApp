@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, TextInput, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useCompanies, Company } from '../context/CompaniesContext';
+import { useCompanies } from '../context/CompaniesContext';
 import { useThemeColor } from '../hooks/use-theme-color';
 
 interface CompanySelectorProps {
@@ -30,7 +30,9 @@ export function CompanySelector({
   const borderColor = useThemeColor({}, 'border');
   const background = useThemeColor({}, 'background');
 
-  const filteredCompanies = companies.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredCompanies = useMemo(() => {
+    return companies.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [companies, searchQuery]);
 
   const handleSelect = (id: string) => {
     if (multiple) {

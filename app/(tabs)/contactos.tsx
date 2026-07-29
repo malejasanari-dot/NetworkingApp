@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useLayoutEffect } from 'react';
-import { StyleSheet, View, Text, FlatList, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useMemo, useLayoutEffect, useCallback } from 'react';
+import { StyleSheet, View, Text, FlatList, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { ControlledInput } from '../../components/ui/controlled-input';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
@@ -90,6 +90,22 @@ export default function ContactosScreen() {
     });
   }, [contacts, searchQuery, activeTags, activeCompanyFilter, companies]);
 
+  const handlePressContact = useCallback((id: string) => {
+    router.push(`/contacto/${id}`);
+  }, [router]);
+
+  const handleToggleFavorite = useCallback((id: string, currentFavorito: boolean) => {
+    updateContact(id, { favorito: !currentFavorito });
+  }, [updateContact]);
+
+  const renderContactItem = useCallback(({ item }: { item: any }) => (
+    <ContactCard 
+      contact={item} 
+      onPress={() => handlePressContact(item.id)} 
+      onToggleFavorite={() => handleToggleFavorite(item.id, item.favorito)}
+    />
+  ), [handlePressContact, handleToggleFavorite]);
+
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor, justifyContent: 'center', alignItems: 'center' }]}>
@@ -152,13 +168,11 @@ export default function ContactosScreen() {
         data={filteredContacts}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <ContactCard 
-            contact={item} 
-            onPress={() => router.push(`/contacto/${item.id}`)} 
-            onToggleFavorite={() => updateContact(item.id, { favorito: !item.favorito })}
-          />
-        )}
+        renderItem={renderContactItem}
+        initialNumToRender={8}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: 40 }}>
             <Text style={{ color: secondaryText }}>

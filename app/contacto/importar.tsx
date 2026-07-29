@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, TextInput } from 'react-native';
 import * as Contacts from 'expo-contacts';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,9 +76,11 @@ export default function ImportarContactosScreen() {
     );
   };
 
-  const filteredContacts = deviceContacts.filter(contact => 
-    contact.name && contact.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredContacts = useMemo(() => {
+    return deviceContacts.filter(contact => 
+      contact.name && contact.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [deviceContacts, searchQuery]);
 
 
   if (isLoading) {

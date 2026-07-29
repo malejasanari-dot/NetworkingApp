@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { useReminders } from '../../context/RemindersContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { ContactCard } from '../../components/ContactCard';
+import { formatDate } from '../../utils/date';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -46,13 +47,6 @@ export default function HomeScreen() {
     setTheme(isDark ? 'light' : 'dark');
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const day = date.getDate();
-    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    return `${day} ${monthNames[date.getMonth()]} ${date.getFullYear()} - ${timeString}`;
-  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor }]} contentContainerStyle={styles.content}>

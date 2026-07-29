@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useContacts } from '../../context/ContactsContext';
 import { useNotes } from '../../context/NotesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
+import { parseTags } from '../../utils/tags';
 
 export default function AgregarScreen() {
   const router = useRouter();
@@ -28,7 +29,6 @@ export default function AgregarScreen() {
   const textColor = useThemeColor({}, 'text');
   const secondaryText = useThemeColor({}, 'secondaryText');
   const primaryColor = useThemeColor({}, 'primary');
-  const accent1 = useThemeColor({}, 'accent1');
   const accent2 = useThemeColor({}, 'accent2');
   const borderColor = useThemeColor({}, 'border');
 
@@ -38,7 +38,7 @@ export default function AgregarScreen() {
       return;
     }
 
-    const tagsArray = tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    const tagsArray = parseTags(tagsInput);
 
     const compName = empresaActual ? companies.find(c => c.id === empresaActual)?.name || '' : '';
 
