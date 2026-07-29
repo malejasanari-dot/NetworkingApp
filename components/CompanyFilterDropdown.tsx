@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../context/CompaniesContext';
@@ -19,10 +19,10 @@ export function CompanyFilterDropdown({ value, onChange }: CompanyFilterDropdown
   const cardColor = useThemeColor({}, 'card');
   const borderColor = useThemeColor({}, 'border');
 
-  const handleSelect = (id: string) => {
+  const handleSelect = useCallback((id: string) => {
     onChange(id);
     setModalVisible(false);
-  };
+  }, [onChange]);
 
   const displayValue = () => {
     if (value === 'ALL') return 'Todas las empresas';
@@ -31,11 +31,11 @@ export function CompanyFilterDropdown({ value, onChange }: CompanyFilterDropdown
     return comp ? comp.name : 'Todas las empresas';
   };
 
-  const filterOptions = [
+  const filterOptions = useMemo(() => [
     { id: 'ALL', name: 'Todas las empresas', icon: 'business-outline' as any },
     { id: 'NONE', name: 'Sin empresa', icon: 'person-outline' as any },
     ...companies.map(c => ({ id: c.id, name: c.name, icon: 'briefcase-outline' as any }))
-  ];
+  ], [companies]);
 
   return (
     <View style={styles.container}>

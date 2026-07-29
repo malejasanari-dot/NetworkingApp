@@ -4,25 +4,40 @@ import { ControlledInput } from '../../../components/ui/controlled-input';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../../context/CompaniesContext';
+import { useContacts } from '../../../context/ContactsContext';
 
 export default function EditarEmpresaScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { companies, updateCompany } = useCompanies();
+  const { contacts, updateContact } = useContacts();
   
   const [name, setName] = useState('');
   const [sector, setSector] = useState('');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const company = companies.find(c => c.id === id);
+
   useEffect(() => {
-    const company = companies.find(c => c.id === id);
     if (company) {
       setName(company.name);
       setSector(company.sector || '');
       setNotes(company.notes || '');
     }
-  }, [id, companies]);
+  }, [company]);
+
+  if (!company) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={64} color="#666" />
+        <Text style={styles.errorText}>Empresa no encontrada.</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backButtonText}>Volver</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const handleUpdate = async () => {
     if (!name.trim()) {
@@ -30,20 +45,42 @@ export default function EditarEmpresaScreen() {
       return;
     }
 
-    setIsSaving(true);
-    try {
-      if (typeof id === 'string') {
+    const newName = name.trim();
+    if (typeof id === 'string') {
+      const duplicate = companies.find(
+        c => c.id !== id && c.name.trim().toLowerCase() === newName.toLowerCase()
+      );
+      if (duplicate) {
+        Alert.alert('Error', 'Ya existe una empresa registrada con este nombre.');
+        return;
+      }
+
+      setIsSaving(true);
+      try {
+        const oldName = company.name;
         await updateCompany(id, {
-          name: name.trim(),
+          name: newName,
           sector: sector.trim(),
           notes: notes.trim(),
         });
+
+        if (oldName.toLowerCase() !== newName.toLowerCase()) {
+          const linkedContacts = contacts.filter(
+            c => c.empresaActual === id || 
+                 c.empresasAnteriores?.includes(id) || 
+                 (c.company && c.company.toLowerCase() === oldName.toLowerCase())
+          );
+          for (const c of linkedContacts) {
+            await updateContact(c.id, { company: newName });
+          }
+        }
+
         router.back();
+      } catch (error: any) {
+        Alert.alert('Error', error?.message || 'No se pudo actualizar la empresa.');
+      } finally {
+        setIsSaving(false);
       }
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo actualizar la empresa.');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -119,6 +156,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#FFFFFF',
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#666',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  backButton: {
+    backgroundColor: '#4F185A',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  backButtonText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   content: {
     padding: 24,

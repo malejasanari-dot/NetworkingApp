@@ -75,6 +75,15 @@ export const CompaniesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const updateCompany = async (id: string, updatedData: Partial<Company>) => {
     try {
+      if (updatedData.name) {
+        const nameLower = updatedData.name.trim().toLowerCase();
+        const existingCompany = companies.find(
+          c => c.id !== id && c.name.trim().toLowerCase() === nameLower
+        );
+        if (existingCompany) {
+          throw new Error('Ya existe una empresa registrada con este nombre.');
+        }
+      }
       const updatedCompanies = companies.map(c => 
         c.id === id ? { ...c, ...updatedData } : c
       );
@@ -82,6 +91,7 @@ export const CompaniesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       await AsyncStorage.setItem('@personal_networking_companies', JSON.stringify(updatedCompanies));
     } catch (e) {
       console.error('Error updating company:', e);
+      throw e;
     }
   };
 
@@ -120,17 +130,14 @@ export const CompaniesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const existingIndex = updatedCompanies.findIndex(c => c.name.toLowerCase() === name);
         
         if (existingIndex === -1) {
-          // Crear nueva empresa si no existe
+          const originalName = contacts.find(c => c.company?.toLowerCase() === name)?.company || name;
           const newCompany: Company = {
             id: generateId(createdCount),
-            name: companyMaps.get(name.toLowerCase())?.[0] || name, // Usar el nombre original preservando mayúsculas/minúsculas de uno de los contactos
+            name: originalName.trim(),
             sector: '',
             notes: '',
             contactIds: contactIds,
           };
-          // Intentar encontrar un nombre con mejor capitalización si es posible
-          const originalName = contacts.find(c => c.company?.toLowerCase() === name)?.company || name;
-          newCompany.name = originalName.trim();
           
           updatedCompanies.push(newCompany);
           createdCount++;

@@ -9,7 +9,7 @@ import { ContactCard } from '../../components/ContactCard';
 export default function EmpresaDetailScreen() {
   const { id } = useLocalSearchParams();
   const { companies, deleteCompany } = useCompanies();
-  const { contacts } = useContacts();
+  const { contacts, updateContact } = useContacts();
   const router = useRouter();
 
   const company = companies.find(c => c.id === id);
@@ -44,6 +44,19 @@ export default function EmpresaDetailScreen() {
           text: "Eliminar", 
           style: "destructive", 
           onPress: async () => {
+            const linkedContacts = contacts.filter(
+              c => c.empresaActual === company.id || c.empresasAnteriores?.includes(company.id)
+            );
+            for (const c of linkedContacts) {
+              const updatedActual = c.empresaActual === company.id ? '' : c.empresaActual;
+              const updatedAnteriores = c.empresasAnteriores?.filter(comp => comp !== company.id) || [];
+              const updatedCompanyStr = (c.empresaActual === company.id || (c.company && c.company.toLowerCase() === company.name.toLowerCase())) ? '' : c.company;
+              await updateContact(c.id, {
+                empresaActual: updatedActual,
+                empresasAnteriores: updatedAnteriores,
+                company: updatedCompanyStr,
+              });
+            }
             await deleteCompany(company.id);
             router.back();
           }
@@ -170,28 +183,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#8E8E93',
     textAlign: 'center',
-  },
-  statsCard: {
-    backgroundColor: '#FAFAFA',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 32,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    alignItems: 'center',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#4F185A',
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
   },
   emptyCard: {
     padding: 16,

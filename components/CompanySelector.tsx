@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, TextInput, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../context/CompaniesContext';
@@ -34,7 +34,7 @@ export function CompanySelector({
     return companies.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [companies, searchQuery]);
 
-  const handleSelect = (id: string) => {
+  const handleSelect = useCallback((id: string) => {
     if (multiple) {
       const arr = Array.isArray(value) ? value : [];
       if (arr.includes(id)) {
@@ -46,7 +46,7 @@ export function CompanySelector({
       onChange(id);
       setModalVisible(false);
     }
-  };
+  }, [multiple, value, onChange]);
 
   const handleCreate = async () => {
     if (!searchQuery.trim()) return;
@@ -59,7 +59,7 @@ export function CompanySelector({
     }
   };
 
-  const renderValue = () => {
+  const displayValue = useMemo(() => {
     if (multiple) {
       const arr = Array.isArray(value) ? value : [];
       if (arr.length === 0) return null;
@@ -72,9 +72,7 @@ export function CompanySelector({
       const comp = companies.find(c => c.id === value);
       return comp ? comp.name : '';
     }
-  };
-
-  const displayValue = renderValue();
+  }, [value, companies, multiple]);
 
   return (
     <View style={styles.container}>

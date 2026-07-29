@@ -1,5 +1,5 @@
-import React, { useMemo, useLayoutEffect, useState } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useMemo, useLayoutEffect, useState, useCallback } from 'react';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import { useCompanies, Company } from '../../context/CompaniesContext';
@@ -10,12 +10,11 @@ export default function EmpresasScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { companies, syncCompanies, isLoading: loadingCompanies } = useCompanies();
-  const { contacts, isLoading: loadingContacts } = useContacts();
+  const { contacts, updateContact, isLoading: loadingContacts } = useContacts();
   const [isSyncing, setIsSyncing] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
-  const textColor = useThemeColor({}, 'text');
   const secondaryText = useThemeColor({}, 'secondaryText');
   const primaryColor = useThemeColor({}, 'primary');
   const accent1 = useThemeColor({}, 'accent1');
@@ -25,6 +24,18 @@ export default function EmpresasScreen() {
     setIsSyncing(true);
     try {
       const result = await syncCompanies(contacts);
+      
+      for (const contact of contacts) {
+        if (!contact.empresaActual && contact.company && contact.company.trim()) {
+          const matchedCompany = companies.find(
+            c => c.name.toLowerCase() === contact.company?.trim().toLowerCase()
+          );
+          if (matchedCompany) {
+            await updateContact(contact.id, { empresaActual: matchedCompany.id });
+          }
+        }
+      }
+
       Alert.alert(
         'Sincronización Completada',
         `Se han identificado y creado ${result.created} empresas nuevas a partir de tus contactos.`
@@ -68,18 +79,14 @@ export default function EmpresasScreen() {
     });
   }, [companies, contacts]);
 
-  if (loadingCompanies || loadingContacts) {
-    return (
-      <View style={[styles.container, { backgroundColor, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={primaryColor} />
-      </View>
-    );
-  }
+  const handlePressCompany = useCallback((id: string) => {
+    router.push(`/empresa/${id}`);
+  }, [router]);
 
-  const renderCompanyItem = ({ item }: { item: Company & { contactCount: number } }) => (
+  const renderCompanyItem = useCallback(({ item }: { item: Company & { contactCount: number } }) => (
     <TouchableOpacity 
       style={[styles.companyCard, { backgroundColor: cardColor, borderColor }]}
-      onPress={() => router.push(`/empresa/${item.id}`)}
+      onPress={() => handlePressCompany(item.id)}
     >
       <View style={styles.companyInfo}>
         <Text style={[styles.companyName, { color: primaryColor }]}>{item.name}</Text>
@@ -90,15 +97,29 @@ export default function EmpresasScreen() {
       </View>
       <Ionicons name="chevron-forward" size={20} color={secondaryText} />
     </TouchableOpacity>
-  );
+  ), [cardColor, borderColor, primaryColor, secondaryText, handlePressCompany]);
+
+  const keyExtractor = useCallback((item: Company) => item.id, []);
+
+  if (loadingCompanies || loadingContacts) {
+    return (
+      <View style={[styles.container, { backgroundColor, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={primaryColor} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <FlatList
         data={companiesWithCount}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         renderItem={renderCompanyItem}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="business-outline" size={64} color={borderColor} />

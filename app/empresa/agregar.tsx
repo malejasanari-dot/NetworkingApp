@@ -28,8 +28,8 @@ export default function AgregarEmpresaScreen() {
         notes: notes.trim(),
       });
       router.back();
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo guardar la empresa.');
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'No se pudo guardar la empresa.');
     } finally {
       setIsSaving(false);
     }
