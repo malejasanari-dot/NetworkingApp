@@ -78,19 +78,6 @@ export const MOCK_CONTACTS: Contact[] = [
   },
 ];
 
-export const MOCK_REMINDERS = [
-  {
-    id: 'r1',
-    title: 'Enviar correo a Carlos Mendoza',
-    date: 'Mañana, 10:00 AM',
-  },
-  {
-    id: 'r2',
-    title: 'Llamar a Ana sobre la campaña',
-    date: 'Viernes, 16:30 PM',
-  },
-];
-
 export const MOCK_PROFILE = {
   name: 'María Ariza',
   title: 'Senior Product Manager',

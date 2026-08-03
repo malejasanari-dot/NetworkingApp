@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Contact, MOCK_CONTACTS } from '../constants/MockData';
 import { generateId } from '../utils/id';
+import { useReminders } from './RemindersContext';
 
 interface ContactsContextData {
   contacts: Contact[];
@@ -17,6 +18,7 @@ const ContactsContext = createContext<ContactsContextData>({} as ContactsContext
 export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { deleteRemindersForContact } = useReminders();
 
   useEffect(() => {
     loadContacts();
@@ -111,6 +113,9 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteContact = async (id: string) => {
     try {
+      if (deleteRemindersForContact) {
+        await deleteRemindersForContact(id);
+      }
       const updatedContacts = contacts.filter(c => c.id !== id);
       setContacts(updatedContacts);
       await AsyncStorage.setItem('@personal_networking_contacts', JSON.stringify(updatedContacts));

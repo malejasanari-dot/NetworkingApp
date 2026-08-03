@@ -25,7 +25,9 @@ export default function HomeScreen() {
   const secondaryText = useThemeColor({}, 'secondaryText');
   const accent1 = useThemeColor({}, 'accent1');
 
-  const upcomingReminders = getUpcomingReminders(7);
+  const upcomingReminders = useMemo(() => {
+    return getUpcomingReminders(7);
+  }, [getUpcomingReminders]);
   const recentContacts = contacts.slice(0, 2); 
   
   const topCompanies = useMemo(() => {
@@ -147,18 +149,23 @@ export default function HomeScreen() {
           return (
             <TouchableOpacity 
               key={reminder.id} 
-              style={[styles.reminderCard, { backgroundColor: cardColor, borderColor }]}
-              onPress={() => router.push(`/contacto/${reminder.contactoId}`)}
+              style={[styles.reminderCard, { backgroundColor: cardColor, borderColor, opacity: contact ? 1 : 0.7 }]}
+              onPress={() => {
+                if (contact) {
+                  router.push(`/contacto/${reminder.contactoId}`);
+                }
+              }}
+              activeOpacity={contact ? 0.7 : 1}
             >
               <View style={styles.reminderIcon}>
                 <Ionicons name="notifications" size={20} color={accent1} />
               </View>
               <View style={styles.reminderInfo}>
                 <Text style={[styles.reminderTitle, { color: textColor }]}>
-                  {contact ? contact.name : 'Contacto'}
+                  {contact ? contact.name : 'Contacto no disponible'}
                 </Text>
                 <Text style={[styles.reminderSubtitle, { color: secondaryText }]} numberOfLines={1}>
-                  {reminder.nota || 'Sin nota de seguimiento'}
+                  {reminder.nota || 'Sin nota'}
                 </Text>
                 <Text style={[styles.reminderDate, { color: accent1 }]}>
                   {formatDate(reminder.fecha)}
@@ -310,6 +317,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     marginBottom: 4,
+  },
+  reminderSubtitle: {
+    fontSize: 13,
+    marginBottom: 2,
   },
   reminderDate: {
     fontSize: 12,

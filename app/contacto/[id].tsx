@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,7 +44,10 @@ export default function ContactDetailScreen() {
 
   const scale = useSharedValue(1);
 
-  const contactReminders = getRemindersForContact(id as string);
+  const contactReminders = useMemo(
+    () => getRemindersForContact(id as string),
+    [getRemindersForContact, id]
+  );
   const contactNotes = getNotesForContact(id as string);
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -71,7 +74,7 @@ export default function ContactDetailScreen() {
     }
   };
 
-  const handleSaveReminder = async (data: { fecha: string; nota: string }) => {
+  const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string }) => {
     if (editingReminder) {
       await updateReminder(editingReminder.id, data);
     } else {
@@ -80,7 +83,7 @@ export default function ContactDetailScreen() {
         ...data,
       });
     }
-  };
+  }, [editingReminder, updateReminder, addReminder, id]);
 
   const handleAddOrUpdateNote = async () => {
     if (!newNoteContent.trim()) return;
@@ -119,17 +122,17 @@ export default function ContactDetailScreen() {
     );
   };
 
-  const openAddReminder = () => {
+  const openAddReminder = useCallback(() => {
     setEditingReminder(undefined);
     setIsModalVisible(true);
-  };
+  }, []);
 
-  const openEditReminder = (reminder: Recordatorio) => {
+  const openEditReminder = useCallback((reminder: Recordatorio) => {
     setEditingReminder(reminder);
     setIsModalVisible(true);
-  };
+  }, []);
 
-  const handleDeleteReminder = (reminderId: string) => {
+  const handleDeleteReminder = useCallback((reminderId: string) => {
     Alert.alert(
       "Eliminar Recordatorio",
       "¿Estás seguro de que deseas eliminar este recordatorio?",
@@ -138,7 +141,7 @@ export default function ContactDetailScreen() {
         { text: "Eliminar", style: "destructive", onPress: () => deleteReminder(reminderId) }
       ]
     );
-  };
+  }, [deleteReminder]);
 
 
   const handleDelete = () => {
@@ -344,7 +347,10 @@ export default function ContactDetailScreen() {
 
       <ReminderModal 
         isVisible={isModalVisible}
-        onClose={() => setIsModalVisible(false)}
+        onClose={() => {
+          setIsModalVisible(false);
+          setEditingReminder(undefined);
+        }}
         onSave={handleSaveReminder}
         initialData={editingReminder}
       />

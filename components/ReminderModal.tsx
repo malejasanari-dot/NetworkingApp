@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView, 
   Platform,
   TouchableWithoutFeedback,
-  Keyboard
+  Keyboard,
+  Alert
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,11 +46,12 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   useEffect(() => {
     if (initialData) {
       setFecha(new Date(initialData.fecha));
-      setNota(initialData.nota);
+      setNota(initialData.nota || '');
     } else {
       // Default to tomorrow
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setSeconds(0, 0);
       setFecha(tomorrow);
       setNota('');
     }
@@ -71,8 +73,11 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 
   const handleSave = () => {
     if (fecha < new Date() && !initialData) {
-      // Basic validation: Don't allow past dates for new reminders
-      // You might want to show an alert here
+      Alert.alert(
+        'Fecha u hora inválida',
+        'No puedes crear un recordatorio con una fecha u hora pasada.'
+      );
+      return;
     }
     onSave({
       fecha: fecha.toISOString(),
@@ -80,7 +85,6 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     });
     onClose();
   };
-
 
   return (
     <Modal
@@ -165,7 +169,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
         onConfirm={handleConfirmDate}
         onCancel={() => setDatePickerVisibility(false)}
         date={fecha}
-        minimumDate={new Date()}
+        minimumDate={initialData ? undefined : new Date()}
       />
 
       <DateTimePickerModal
