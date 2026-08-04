@@ -1,14 +1,24 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MOCK_PROFILE } from '../../constants/MockData';
 import { useContacts } from '../../context/ContactsContext';
+import { useCompanies } from '../../context/CompaniesContext';
+import { useNotes } from '../../context/NotesContext';
+import { useReminders } from '../../context/RemindersContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 
 export default function PerfilScreen() {
   const { contacts } = useContacts();
+  const { companies } = useCompanies();
+  const { notes } = useNotes();
+  const { getUpcomingReminders } = useReminders();
+
   const totalContacts = contacts.length;
-  const favoritesCount = contacts.filter(c => c.favorito).length;
+  const favoritesCount = useMemo(() => contacts.filter(c => c && c.favorito).length, [contacts]);
+  const companiesCount = companies.length;
+  const notesCount = notes.length;
+  const upcomingRemindersCount = useMemo(() => getUpcomingReminders(7).length, [getUpcomingReminders]);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -30,21 +40,32 @@ export default function PerfilScreen() {
         <Text style={[styles.title, { color: secondaryText }]}>{MOCK_PROFILE.title} en {MOCK_PROFILE.company}</Text>
       </View>
 
-      {/* Stats */}
+      {/* Dynamic Stats Container */}
       <View style={[styles.statsContainer, { backgroundColor: cardColor, borderColor }]}>
         <View style={styles.statBox}>
           <Text style={[styles.statNumber, { color: primaryColor }]}>{totalContacts}</Text>
-          <Text style={[styles.statLabel, { color: secondaryText }]}>Contactos</Text>
+          <Text style={[styles.statLabel, { color: secondaryText }]} numberOfLines={1}>Contactos</Text>
         </View>
+
         <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
+
         <View style={styles.statBox}>
-          <Text style={[styles.statNumber, { color: primaryColor }]}>{favoritesCount}</Text>
-          <Text style={[styles.statLabel, { color: secondaryText }]}>Favoritos</Text>
+          <Text style={[styles.statNumber, { color: accent2 }]}>{favoritesCount}</Text>
+          <Text style={[styles.statLabel, { color: secondaryText }]} numberOfLines={1}>Favoritos</Text>
         </View>
+
         <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
+
         <View style={styles.statBox}>
-          <Text style={[styles.statNumber, { color: primaryColor }]}>{MOCK_PROFILE.tags}</Text>
-          <Text style={[styles.statLabel, { color: secondaryText }]}>Etiquetas</Text>
+          <Text style={[styles.statNumber, { color: accent1 }]}>{companiesCount}</Text>
+          <Text style={[styles.statLabel, { color: secondaryText }]} numberOfLines={1}>Empresas</Text>
+        </View>
+
+        <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
+
+        <View style={styles.statBox}>
+          <Text style={[styles.statNumber, { color: primaryColor }]}>{notesCount}</Text>
+          <Text style={[styles.statLabel, { color: secondaryText }]} numberOfLines={1}>Notas</Text>
         </View>
       </View>
 

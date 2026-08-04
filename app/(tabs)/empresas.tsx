@@ -128,13 +128,6 @@ export default function EmpresasScreen() {
           </View>
         }
       />
-      
-      <TouchableOpacity 
-        style={[styles.fab, { backgroundColor: accent1, shadowColor: accent1 }]}
-        onPress={() => router.push('/empresa/agregar')}
-      >
-        <Ionicons name="add" size={30} color="#FFFFFF" />
-      </TouchableOpacity>
     </View>
   );
 }

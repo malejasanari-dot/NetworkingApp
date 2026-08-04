@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Nota } from '../constants/MockData';
-import { useContacts } from './ContactsContext';
+import { Nota, Contact } from '../constants/MockData';
 import { generateId } from '../utils/id';
 
 interface NotesContextData {
@@ -18,11 +17,11 @@ const NotesContext = createContext<NotesContextData>({} as NotesContextData);
 
 const STORAGE_KEY = '@personal_networking_notes';
 const STORAGE_KEY_MIGRATED = '@personal_networking_notes_migrated';
+const CONTACTS_STORAGE_KEY = '@personal_networking_contacts';
 
 export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notes, setNotes] = useState<Nota[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { contacts } = useContacts();
 
   useEffect(() => {
     loadNotes();
@@ -48,23 +47,31 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const isMigrated = await AsyncStorage.getItem(STORAGE_KEY_MIGRATED);
       if (!isMigrated) {
         let migratedAny = false;
-        if (contacts && Array.isArray(contacts)) {
-          const contactsWithLegacyNotes = contacts.filter(
-            c => c && c.notes && typeof c.notes === 'string' && c.notes.trim().length > 0
-          );
-          
-          for (const contact of contactsWithLegacyNotes) {
-            const hasNotes = initialNotes.some(n => n.contactoId === contact.id);
-            if (!hasNotes) {
-              const newNote: Nota = {
-                id: `migrated_${contact.id}`,
-                contactoId: contact.id,
-                contenido: contact.notes!,
-                fecha: contact.dateAdded || new Date().toISOString(),
-              };
-              initialNotes.push(newNote);
-              migratedAny = true;
+        const storedContactsRaw = await AsyncStorage.getItem(CONTACTS_STORAGE_KEY);
+        if (storedContactsRaw) {
+          try {
+            const parsedContacts: Contact[] = JSON.parse(storedContactsRaw);
+            if (Array.isArray(parsedContacts)) {
+              const contactsWithLegacyNotes = parsedContacts.filter(
+                c => c && c.notes && typeof c.notes === 'string' && c.notes.trim().length > 0
+              );
+              
+              for (const contact of contactsWithLegacyNotes) {
+                const hasNotes = initialNotes.some(n => n.contactoId === contact.id);
+                if (!hasNotes) {
+                  const newNote: Nota = {
+                    id: `migrated_${contact.id}`,
+                    contactoId: contact.id,
+                    contenido: contact.notes!,
+                    fecha: contact.dateAdded || new Date().toISOString(),
+                  };
+                  initialNotes.push(newNote);
+                  migratedAny = true;
+                }
+              }
             }
+          } catch (contactsParseError) {
+            console.error('Error parsing stored contacts for notes migration:', contactsParseError);
           }
         }
 

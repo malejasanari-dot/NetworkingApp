@@ -1,21 +1,28 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import React, { useMemo, useCallback, useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useContacts } from '../../context/ContactsContext';
-import { useCompanies, Company } from '../../context/CompaniesContext';
+import { useCompanies } from '../../context/CompaniesContext';
 import { useReminders } from '../../context/RemindersContext';
+import { useNotes } from '../../context/NotesContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
-import { ContactCard } from '../../components/ContactCard';
 import { formatDate } from '../../utils/date';
+import { MOCK_PROFILE } from '../../constants/MockData';
+import { StatsDonutChart } from '../../components/StatsDonutChart';
+import { RecentActivityFeed, ActivityItem } from '../../components/RecentActivityFeed';
+import { SmartFAB } from '../../components/SmartFAB';
+import { ReminderModal } from '../../components/ReminderModal';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { contacts } = useContacts();
   const { companies } = useCompanies();
+  const { notes } = useNotes();
   const { theme, setTheme, isDark } = useTheme();
-  const { getUpcomingReminders } = useReminders();
+  const { getUpcomingReminders, addReminder } = useReminders();
+  const [isReminderModalVisible, setIsReminderModalVisible] = useState(false);
   
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -24,12 +31,12 @@ export default function HomeScreen() {
   const borderColor = useThemeColor({}, 'border');
   const secondaryText = useThemeColor({}, 'secondaryText');
   const accent1 = useThemeColor({}, 'accent1');
+  const accent2 = useThemeColor({}, 'accent2');
 
   const upcomingReminders = useMemo(() => {
     return getUpcomingReminders(7);
   }, [getUpcomingReminders]);
-  const recentContacts = contacts.slice(0, 2); 
-  
+
   const topCompanies = useMemo(() => {
     return companies
       .map(company => {
@@ -49,161 +56,250 @@ export default function HomeScreen() {
     setTheme(isDark ? 'light' : 'dark');
   };
 
+  const totalContacts = contacts.length;
+  const favoritesCount = useMemo(() => contacts.filter(c => c && c.favorito).length, [contacts]);
+  const totalCompanies = companies.length;
+
+  const companyPercentage = useMemo(() => {
+    if (totalContacts === 0) return 0;
+    const count = contacts.filter(c => c && (c.empresaActual || (c.company && c.company.trim() !== ''))).length;
+    return Math.round((count / totalContacts) * 100);
+  }, [contacts, totalContacts]);
+
+  const favoritesPercentage = useMemo(() => {
+    if (totalContacts === 0) return 0;
+    return Math.round((favoritesCount / totalContacts) * 100);
+  }, [favoritesCount, totalContacts]);
+
+  const remindersPercentage = useMemo(() => {
+    if (totalContacts === 0) return 0;
+    return Math.round((upcomingReminders.length / totalContacts) * 100);
+  }, [upcomingReminders, totalContacts]);
+
+  const recentActivities = useMemo<ActivityItem[]>(() => {
+    const contactEvents: ActivityItem[] = (contacts || []).map(c => ({
+      id: `contact_${c.id}`,
+      type: 'contact',
+      date: c.dateAdded || new Date().toISOString(),
+      contactId: c.id,
+      contactName: c.name,
+    }));
+
+    const noteEvents: ActivityItem[] = (notes || []).map(n => {
+      const contactObj = (contacts || []).find(c => c.id === n.contactoId);
+      return {
+        id: `note_${n.id}`,
+        type: 'note',
+        date: n.fecha,
+        contactId: n.contactoId,
+        contactName: contactObj ? contactObj.name : 'Contacto no disponible',
+        content: n.contenido,
+      };
+    });
+
+    const combined = [...contactEvents, ...noteEvents];
+    return combined
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [contacts, notes]);
+
+  const handlePressActivity = useCallback((item: ActivityItem) => {
+    if (item && item.contactId) {
+      router.push(`/contacto/${item.contactId}`);
+    }
+  }, [router]);
+
+  const handleFABAddContact = useCallback(() => {
+    router.push('/agregar');
+  }, [router]);
+
+  const handleFABAddCompany = useCallback(() => {
+    router.push('/empresa/agregar');
+  }, [router]);
+
+  const handleFABAddReminder = useCallback(() => {
+    setIsReminderModalVisible(true);
+  }, []);
+
+  const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string }) => {
+    const defaultContactId = contacts.length > 0 ? contacts[0].id : '';
+    await addReminder({
+      contactoId: defaultContactId,
+      fecha: data.fecha,
+      nota: data.nota,
+    });
+  }, [contacts, addReminder]);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor }]} contentContainerStyle={styles.content}>
-      {/* Theme Switch Section */}
-      <View style={[styles.themeCard, { backgroundColor: cardColor, borderColor }]}>
-        <View style={styles.themeInfo}>
-          <Text style={[styles.themeTitle, { color: primaryColor }]}>Modo Oscuro</Text>
-          <Text style={[styles.themeSubtitle, { color: secondaryText }]}>
-            {isDark ? 'Desactiva para tema claro' : 'Activa para tema oscuro'}
-          </Text>
-        </View>
-        <View style={styles.switchContainer}>
-          <Ionicons name="sunny" size={20} color={isDark ? secondaryText : '#FFB800'} style={{ marginRight: 8 }} />
-          <Switch 
-            value={isDark}
-            onValueChange={toggleTheme}
-            trackColor={{ false: borderColor, true: primaryColor + '50' }}
-            thumbColor={isDark ? primaryColor : '#f4f3f4'}
-            ios_backgroundColor={borderColor}
-          />
-          <Ionicons name="moon" size={20} color={isDark ? '#BB86FC' : secondaryText} style={{ marginLeft: 8 }} />
-        </View>
-      </View>
-
-      {/* Quick Actions */}
-      <View style={styles.quickActionsContainer}>
-        <TouchableOpacity 
-          style={[styles.quickActionBox, { backgroundColor: cardColor, borderColor }]} 
-          onPress={() => router.push('/agregar')}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: theme === 'dark' ? '#331D36' : '#F3EAF4' }]}>
-            <Ionicons name="person-add" size={24} color={primaryColor} />
+    <View style={{ flex: 1 }}>
+      <ScrollView style={[styles.container, { backgroundColor }]} contentContainerStyle={styles.content}>
+        {/* Header de Usuario con Toggle de Tema Discreto */}
+        <View style={styles.userHeader}>
+          <View style={styles.userInfo}>
+            <View style={[styles.avatar, { backgroundColor: primaryColor + '15', borderColor: primaryColor }]}>
+              <Text style={[styles.avatarText, { color: primaryColor }]}>{MOCK_PROFILE.name.charAt(0)}</Text>
+            </View>
+            <View style={styles.userTextContainer}>
+              <Text style={[styles.greeting, { color: primaryColor }]}>¡Hola, {MOCK_PROFILE.name.split(' ')[0]}!</Text>
+              <Text style={[styles.userRole, { color: secondaryText }]} numberOfLines={1}>{MOCK_PROFILE.title}</Text>
+            </View>
           </View>
-          <Text style={[styles.quickActionText, { color: primaryColor }]}>Nuevo Contacto</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.quickActionBox, { backgroundColor: cardColor, borderColor }]} 
-          onPress={() => router.push('/favoritos')}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: theme === 'dark' ? '#3D1520' : '#FFEDF1' }]}>
-            <Ionicons name="star" size={24} color="#E23369" />
-          </View>
-          <Text style={[styles.quickActionText, { color: primaryColor }]}>Ver Favoritos</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Companies Summary Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: primaryColor }]}>Empresas en mi Red</Text>
-          <TouchableOpacity onPress={() => router.push('/empresas')}>
-            <Text style={[styles.seeAllText, { color: accent1 }]}>Ver todas</Text>
+          <TouchableOpacity 
+            style={[styles.themeToggleButton, { backgroundColor: cardColor, borderColor }]} 
+            onPress={toggleTheme}
+            activeOpacity={0.7}
+          >
+            <Ionicons 
+              name={isDark ? "sunny" : "moon"} 
+              size={20} 
+              color={isDark ? '#FFB800' : primaryColor} 
+            />
           </TouchableOpacity>
         </View>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.companiesScroll}>
-          {topCompanies.map((company) => (
+
+        {/* Dashboard Estadístico con StatsDonutChart */}
+        <View style={[styles.statsCard, { backgroundColor: cardColor, borderColor }]}>
+          <Text style={[styles.statsCardTitle, { color: primaryColor }]}>Salud de mi Red</Text>
+          
+          <StatsDonutChart 
+            companyPercentage={companyPercentage}
+            favoritesPercentage={favoritesPercentage}
+            remindersPercentage={remindersPercentage}
+          />
+
+          {/* Tarjetas de Métricas Rápidas */}
+          <View style={styles.metricsRow}>
             <TouchableOpacity 
-              key={company.id} 
-              style={[styles.companyMiniCard, { backgroundColor: cardColor, borderColor }]}
-              onPress={() => router.push(`/empresa/${company.id}`)}
+              style={[styles.metricItem, { backgroundColor: primaryColor + '10' }]}
+              onPress={() => router.push('/contactos')}
             >
-              <View style={[styles.companyIconCircle, { backgroundColor: primaryColor + '10' }]}>
-                <Ionicons name="business" size={20} color={primaryColor} />
-              </View>
-              <Text style={[styles.companyMiniTitle, { color: textColor }]} numberOfLines={1}>
-                {company.name}
-              </Text>
-              <View style={[styles.companyBadge, { backgroundColor: primaryColor + '15' }]}>
-                <Text style={[styles.companyBadgeText, { color: primaryColor }]}>
-                  {company.contactCount} {company.contactCount === 1 ? 'persona' : 'personas'}
+              <Text style={[styles.metricNumber, { color: primaryColor }]}>{totalContacts}</Text>
+              <Text style={[styles.metricLabel, { color: secondaryText }]}>Contactos</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.metricItem, { backgroundColor: accent2 + '10' }]}
+              onPress={() => router.push('/favoritos')}
+            >
+              <Text style={[styles.metricNumber, { color: accent2 }]}>{favoritesCount}</Text>
+              <Text style={[styles.metricLabel, { color: secondaryText }]}>Favoritos</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.metricItem, { backgroundColor: accent1 + '10' }]}
+              onPress={() => router.push('/empresas')}
+            >
+              <Text style={[styles.metricNumber, { color: accent1 }]}>{totalCompanies}</Text>
+              <Text style={[styles.metricLabel, { color: secondaryText }]}>Empresas</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Companies Summary Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: primaryColor }]}>Empresas en mi Red</Text>
+            <TouchableOpacity onPress={() => router.push('/empresas')}>
+              <Text style={[styles.seeAllText, { color: accent1 }]}>Ver todas</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.companiesScroll}>
+            {topCompanies.map((company) => (
+              <TouchableOpacity 
+                key={company.id} 
+                style={[styles.companyMiniCard, { backgroundColor: cardColor, borderColor }]}
+                onPress={() => router.push(`/empresa/${company.id}`)}
+              >
+                <View style={[styles.companyIconCircle, { backgroundColor: primaryColor + '10' }]}>
+                  <Ionicons name="business" size={20} color={primaryColor} />
+                </View>
+                <Text style={[styles.companyMiniTitle, { color: textColor }]} numberOfLines={1}>
+                  {company.name}
+                </Text>
+                <View style={[styles.companyBadge, { backgroundColor: primaryColor + '15' }]}>
+                  <Text style={[styles.companyBadgeText, { color: primaryColor }]}>
+                    {company.contactCount} {company.contactCount === 1 ? 'persona' : 'personas'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+            
+            {topCompanies.length === 0 && (
+              <View style={[styles.emptyCompanyBox, { borderColor }]}>
+                <Text style={{ color: secondaryText, fontSize: 13 }}>
+                  Vincula contactos a empresas para ver el resumen aquí.
                 </Text>
               </View>
-            </TouchableOpacity>
-          ))}
+            )}
+          </ScrollView>
+        </View>
+
+        {/* Reminders Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: primaryColor }]}>Próximos Recordatorios</Text>
+            {upcomingReminders.length > 0 && (
+              <Text style={[styles.seeAllText, { color: accent1 }]}>{upcomingReminders.length} en total</Text>
+            )}
+          </View>
           
-          {topCompanies.length === 0 && (
-            <View style={[styles.emptyCompanyBox, { borderColor }]}>
-              <Text style={{ color: secondaryText, fontSize: 13 }}>
-                Vincula contactos a empresas para ver el resumen aquí.
-              </Text>
+          {upcomingReminders.map((reminder) => {
+            const contact = contacts.find(c => c.id === reminder.contactoId);
+            return (
+              <TouchableOpacity 
+                key={reminder.id} 
+                style={[styles.reminderCard, { backgroundColor: cardColor, borderColor, opacity: contact ? 1 : 0.7 }]}
+                onPress={() => {
+                  if (contact) {
+                    router.push(`/contacto/${reminder.contactoId}`);
+                  }
+                }}
+                activeOpacity={contact ? 0.7 : 1}
+              >
+                <View style={styles.reminderIcon}>
+                  <Ionicons name="notifications" size={20} color={accent1} />
+                </View>
+                <View style={styles.reminderInfo}>
+                  <Text style={[styles.reminderTitle, { color: textColor }]}>
+                    {contact ? contact.name : 'Contacto no disponible'}
+                  </Text>
+                  <Text style={[styles.reminderSubtitle, { color: secondaryText }]} numberOfLines={1}>
+                    {reminder.nota || 'Sin nota'}
+                  </Text>
+                  <Text style={[styles.reminderDate, { color: accent1 }]}>
+                    {formatDate(reminder.fecha)}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+          
+          {upcomingReminders.length === 0 && (
+            <View style={[styles.emptyCard, { backgroundColor: cardColor, borderColor }]}>
+              <Ionicons name="calendar-outline" size={32} color={secondaryText} style={{ marginBottom: 8 }} />
+              <Text style={{ color: secondaryText, textAlign: 'center' }}>No hay seguimientos pendientes para los próximos 7 días.</Text>
             </View>
           )}
-        </ScrollView>
-      </View>
-
-      {/* Reminders Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: primaryColor }]}>Próximos Recordatorios</Text>
-          {upcomingReminders.length > 0 && (
-            <Text style={[styles.seeAllText, { color: accent1 }]}>{upcomingReminders.length} en total</Text>
-          )}
         </View>
-        
-        {upcomingReminders.map((reminder) => {
-          const contact = contacts.find(c => c.id === reminder.contactoId);
-          return (
-            <TouchableOpacity 
-              key={reminder.id} 
-              style={[styles.reminderCard, { backgroundColor: cardColor, borderColor, opacity: contact ? 1 : 0.7 }]}
-              onPress={() => {
-                if (contact) {
-                  router.push(`/contacto/${reminder.contactoId}`);
-                }
-              }}
-              activeOpacity={contact ? 0.7 : 1}
-            >
-              <View style={styles.reminderIcon}>
-                <Ionicons name="notifications" size={20} color={accent1} />
-              </View>
-              <View style={styles.reminderInfo}>
-                <Text style={[styles.reminderTitle, { color: textColor }]}>
-                  {contact ? contact.name : 'Contacto no disponible'}
-                </Text>
-                <Text style={[styles.reminderSubtitle, { color: secondaryText }]} numberOfLines={1}>
-                  {reminder.nota || 'Sin nota'}
-                </Text>
-                <Text style={[styles.reminderDate, { color: accent1 }]}>
-                  {formatDate(reminder.fecha)}
-                </Text>
-              </View>
+
+        {/* Seccion de Actividad Reciente */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: primaryColor }]}>Actividad Reciente</Text>
+            <TouchableOpacity onPress={() => router.push('/contactos')}>
+              <Text style={[styles.seeAllText, { color: accent1 }]}>Ver todo</Text>
             </TouchableOpacity>
-          );
-        })}
-        
-        {upcomingReminders.length === 0 && (
-          <View style={[styles.emptyCard, { backgroundColor: cardColor, borderColor }]}>
-            <Ionicons name="calendar-outline" size={32} color={secondaryText} style={{ marginBottom: 8 }} />
-            <Text style={{ color: secondaryText, textAlign: 'center' }}>No hay seguimientos pendientes para los próximos 7 días.</Text>
           </View>
-        )}
-      </View>
-
-      {/* Recent Contacts */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: primaryColor }]}>Agregados Recientemente</Text>
-          <TouchableOpacity onPress={() => router.push('/contactos')}>
-            <Text style={[styles.seeAllText, { color: accent1 }]}>Ver todos</Text>
-          </TouchableOpacity>
-        </View>
-        {recentContacts.map(contact => (
-          <ContactCard 
-            key={contact.id} 
-            contact={contact} 
-            onPress={() => router.push(`/contacto/${contact.id}`)} 
+          
+          <RecentActivityFeed 
+            activities={recentActivities} 
+            onPressItem={handlePressActivity} 
           />
-        ))}
-        {recentContacts.length === 0 && (
-          <Text style={{ textAlign: 'center', color: secondaryText, marginTop: 10 }}>Sin contactos recientes</Text>
-        )}
-      </View>
-
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -215,12 +311,54 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
-  themeCard: {
+  userHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    marginBottom: 20,
+    marginTop: 4,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    marginRight: 12,
+  },
+  avatarText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  userTextContainer: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  userRole: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  themeToggleButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  statsCard: {
     borderRadius: 16,
+    padding: 16,
     marginBottom: 24,
     borderWidth: 1,
     shadowColor: '#000',
@@ -229,20 +367,45 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  themeInfo: {
-    flex: 1,
-  },
-  themeTitle: {
+  statsCardTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 2,
+    marginBottom: 12,
   },
-  themeSubtitle: {
-    fontSize: 12,
-  },
-  switchContainer: {
-    flexDirection: 'row',
+  donutPlaceholder: {
+    height: 120,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 16,
+  },
+  donutPlaceholderText: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  metricItem: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  metricNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  metricLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
   },
   quickActionsContainer: {
     flexDirection: 'row',
@@ -254,24 +417,24 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
-    marginHorizontal: 8,
+    marginHorizontal: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
     borderWidth: 1,
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   quickActionText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   section: {
@@ -286,7 +449,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 12,
   },
   seeAllText: {
     fontSize: 14,
@@ -381,5 +543,16 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     width: 250,
     justifyContent: 'center',
-  }
+  },
+  activityPlaceholderCard: {
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityPlaceholderText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
