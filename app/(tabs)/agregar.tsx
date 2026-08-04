@@ -43,8 +43,8 @@ export default function AgregarScreen() {
     const compName = empresaActual ? companies.find(c => c.id === empresaActual)?.name || '' : '';
 
     const newContact = await addContact({
-      name,
-      phone,
+      name: name.trim(),
+      phone: phone.trim(),
       company: compName,
       empresaActual,
       empresasAnteriores,

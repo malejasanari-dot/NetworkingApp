@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { StyleSheet, View, Text, FlatList, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -9,7 +9,10 @@ import { ContactCard } from '../../components/ContactCard';
 export default function FavoritosScreen() {
   const router = useRouter();
   const { contacts, isLoading, updateContact } = useContacts();
-  const favoriteContacts = contacts.filter(contact => contact.favorito);
+  const favoriteContacts = useMemo(
+    () => contacts.filter(contact => contact && contact.favorito),
+    [contacts]
+  );
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -17,6 +20,22 @@ export default function FavoritosScreen() {
   const primaryColor = useThemeColor({}, 'primary');
   const accent2 = useThemeColor({}, 'accent2');
   const borderColor = useThemeColor({}, 'border');
+
+  const handlePressContact = useCallback((id: string) => {
+    router.push(`/contacto/${id}`);
+  }, [router]);
+
+  const handleToggleFavorite = useCallback((id: string, currentFavorito: boolean) => {
+    updateContact(id, { favorito: !currentFavorito });
+  }, [updateContact]);
+
+  const renderContactItem = useCallback(({ item }: { item: any }) => (
+    <ContactCard 
+      contact={item} 
+      onPress={() => handlePressContact(item.id)} 
+      onToggleFavorite={() => handleToggleFavorite(item.id, item.favorito)}
+    />
+  ), [handlePressContact, handleToggleFavorite]);
 
   if (isLoading) {
     return (
@@ -38,13 +57,7 @@ export default function FavoritosScreen() {
         data={favoriteContacts}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <ContactCard 
-            contact={item} 
-            onPress={() => router.push(`/contacto/${item.id}`)} 
-            onToggleFavorite={() => updateContact(item.id, { favorito: !item.favorito })}
-          />
-        )}
+        renderItem={renderContactItem}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: 40 }}>
             <Text style={{ color: secondaryText }}>Aún no tienes contactos marcados como favoritos.</Text>

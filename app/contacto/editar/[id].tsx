@@ -55,8 +55,8 @@ export default function EditarScreen() {
     const compName = empresaActual ? companies.find(c => c.id === empresaActual)?.name || '' : '';
 
     await updateContact(id as string, {
-      name,
-      phone,
+      name: name.trim(),
+      phone: phone.trim(),
       company: compName,
       empresaActual,
       empresasAnteriores,
