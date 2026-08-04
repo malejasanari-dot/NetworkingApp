@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Nota } from '../constants/MockData';
 import { useContacts } from './ContactsContext';
@@ -6,9 +6,10 @@ import { generateId } from '../utils/id';
 
 interface NotesContextData {
   notes: Nota[];
-  addNote: (note: Omit<Nota, 'id'>) => Promise<void>;
+  addNote: (data: Omit<Nota, 'id'>) => Promise<void>;
   updateNote: (id: string, contenido: string) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
+  deleteNotesForContact: (contactId: string) => Promise<void>;
   isLoading: boolean;
   getNotesForContact: (contactId: string) => Nota[];
 }
@@ -16,6 +17,7 @@ interface NotesContextData {
 const NotesContext = createContext<NotesContextData>({} as NotesContextData);
 
 const STORAGE_KEY = '@personal_networking_notes';
+const STORAGE_KEY_MIGRATED = '@personal_networking_notes_migrated';
 
 export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notes, setNotes] = useState<Nota[]>([]);
@@ -24,7 +26,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     loadNotes();
-  }, [contacts]); // Dependence on contacts to facilitate initial migration if needed
+  }, []);
 
   const loadNotes = async () => {
     try {
@@ -41,32 +43,37 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       }
 
-      // Migration Logic:
-      // If a contact has a 'notes' string but no notes in the new system,
-      // create an initial note entry for them.
-      let migratedAny = false;
-      
-      // Defensive check for contacts
-      if (contacts && Array.isArray(contacts)) {
-        const contactsWithLegacyNotes = contacts.filter(c => c && c.notes && typeof c.notes === 'string' && c.notes.trim().length > 0);
-        
-        for (const contact of contactsWithLegacyNotes) {
-          const hasNotes = initialNotes.some(n => n.contactoId === contact.id);
-          if (!hasNotes) {
-            const newNote: Nota = {
-              id: `migrated_${contact.id}`,
-              contactoId: contact.id,
-              contenido: contact.notes!,
-              fecha: contact.dateAdded || new Date().toISOString(),
-            };
-            initialNotes.push(newNote);
-            migratedAny = true;
+      // One-time Migration Logic:
+      // Executed ONLY if the migration flag does not exist yet.
+      const isMigrated = await AsyncStorage.getItem(STORAGE_KEY_MIGRATED);
+      if (!isMigrated) {
+        let migratedAny = false;
+        if (contacts && Array.isArray(contacts)) {
+          const contactsWithLegacyNotes = contacts.filter(
+            c => c && c.notes && typeof c.notes === 'string' && c.notes.trim().length > 0
+          );
+          
+          for (const contact of contactsWithLegacyNotes) {
+            const hasNotes = initialNotes.some(n => n.contactoId === contact.id);
+            if (!hasNotes) {
+              const newNote: Nota = {
+                id: `migrated_${contact.id}`,
+                contactoId: contact.id,
+                contenido: contact.notes!,
+                fecha: contact.dateAdded || new Date().toISOString(),
+              };
+              initialNotes.push(newNote);
+              migratedAny = true;
+            }
           }
         }
-      }
 
-      if (migratedAny) {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(initialNotes));
+        if (migratedAny) {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(initialNotes));
+        }
+
+        // Persist migration flag ONLY if the migration completed successfully without errors
+        await AsyncStorage.setItem(STORAGE_KEY_MIGRATED, 'true');
       }
 
       setNotes(initialNotes);
@@ -86,46 +93,64 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const addNote = async (data: Omit<Nota, 'id'>) => {
+  const addNote = useCallback(async (data: Omit<Nota, 'id'>) => {
     const newNote: Nota = {
       ...data,
       id: generateId(),
     };
-    const currentNotes = Array.isArray(notes) ? notes : [];
-    const updated = [newNote, ...currentNotes];
-    setNotes(updated);
-    await saveNotes(updated);
-  };
+    setNotes(prevNotes => {
+      const currentNotes = Array.isArray(prevNotes) ? prevNotes : [];
+      const updated = [newNote, ...currentNotes];
+      saveNotes(updated);
+      return updated;
+    });
+  }, []);
 
-  const updateNote = async (id: string, contenido: string) => {
-    const currentNotes = Array.isArray(notes) ? notes : [];
-    const updated = currentNotes.map(n => n.id === id ? { ...n, contenido } : n);
-    setNotes(updated);
-    await saveNotes(updated);
-  };
+  const updateNote = useCallback(async (id: string, contenido: string) => {
+    setNotes(prevNotes => {
+      const currentNotes = Array.isArray(prevNotes) ? prevNotes : [];
+      const updated = currentNotes.map(n => n.id === id ? { ...n, contenido } : n);
+      saveNotes(updated);
+      return updated;
+    });
+  }, []);
 
-  const deleteNote = async (id: string) => {
-    const currentNotes = Array.isArray(notes) ? notes : [];
-    const updated = currentNotes.filter(n => n.id !== id);
-    setNotes(updated);
-    await saveNotes(updated);
-  };
+  const deleteNote = useCallback(async (id: string) => {
+    setNotes(prevNotes => {
+      const currentNotes = Array.isArray(prevNotes) ? prevNotes : [];
+      const updated = currentNotes.filter(n => n.id !== id);
+      saveNotes(updated);
+      return updated;
+    });
+  }, []);
 
-  const getNotesForContact = (contactId: string): Nota[] => {
+  const deleteNotesForContact = useCallback(async (contactId: string) => {
+    setNotes(prevNotes => {
+      const currentNotes = Array.isArray(prevNotes) ? prevNotes : [];
+      const updated = currentNotes.filter(n => n.contactoId !== contactId);
+      saveNotes(updated);
+      return updated;
+    });
+  }, []);
+
+  const getNotesForContact = useCallback((contactId: string): Nota[] => {
     const currentNotes = Array.isArray(notes) ? notes : [];
-    return currentNotes.filter(n => n.contactoId === contactId)
+    return currentNotes.filter(n => n && n.contactoId === contactId)
       .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-  };
+  }, [notes]);
+
+  const value = useMemo(() => ({ 
+    notes, 
+    addNote, 
+    updateNote, 
+    deleteNote, 
+    deleteNotesForContact,
+    isLoading,
+    getNotesForContact 
+  }), [notes, addNote, updateNote, deleteNote, deleteNotesForContact, isLoading, getNotesForContact]);
 
   return (
-    <NotesContext.Provider value={{ 
-      notes, 
-      addNote, 
-      updateNote, 
-      deleteNote, 
-      isLoading,
-      getNotesForContact 
-    }}>
+    <NotesContext.Provider value={value}>
       {children}
     </NotesContext.Provider>
   );

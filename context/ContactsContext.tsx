@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Contact, MOCK_CONTACTS } from '../constants/MockData';
 import { generateId } from '../utils/id';
 import { useReminders } from './RemindersContext';
+import { useNotes } from './NotesContext';
 
 interface ContactsContextData {
   contacts: Contact[];
@@ -19,6 +20,7 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { deleteRemindersForContact } = useReminders();
+  const { deleteNotesForContact } = useNotes();
 
   useEffect(() => {
     loadContacts();
@@ -113,6 +115,9 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const deleteContact = async (id: string) => {
     try {
+      if (deleteNotesForContact) {
+        await deleteNotesForContact(id);
+      }
       if (deleteRemindersForContact) {
         await deleteRemindersForContact(id);
       }

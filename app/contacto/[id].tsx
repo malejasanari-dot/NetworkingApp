@@ -48,7 +48,10 @@ export default function ContactDetailScreen() {
     () => getRemindersForContact(id as string),
     [getRemindersForContact, id]
   );
-  const contactNotes = getNotesForContact(id as string);
+  const contactNotes = useMemo(
+    () => getNotesForContact(id as string),
+    [getNotesForContact, id]
+  );
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -86,15 +89,16 @@ export default function ContactDetailScreen() {
   }, [editingReminder, updateReminder, addReminder, id]);
 
   const handleAddOrUpdateNote = async () => {
-    if (!newNoteContent.trim()) return;
+    const trimmedContent = newNoteContent.trim();
+    if (!trimmedContent) return;
 
     if (editingNoteId) {
-      await updateNote(editingNoteId, newNoteContent);
+      await updateNote(editingNoteId, trimmedContent);
       setEditingNoteId(null);
     } else {
       await addNote({
         contactoId: id as string,
-        contenido: newNoteContent,
+        contenido: trimmedContent,
         fecha: new Date().toISOString(),
       });
     }
@@ -117,7 +121,16 @@ export default function ContactDetailScreen() {
       "¿Estás seguro de que deseas eliminar esta nota del historial?",
       [
         { text: "Cancelar", style: "cancel" },
-        { text: "Eliminar", style: "destructive", onPress: () => deleteNote(noteId) }
+        { 
+          text: "Eliminar", 
+          style: "destructive", 
+          onPress: async () => {
+            if (editingNoteId === noteId) {
+              cancelEditingNote();
+            }
+            await deleteNote(noteId);
+          } 
+        }
       ]
     );
   };

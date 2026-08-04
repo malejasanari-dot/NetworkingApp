@@ -65,7 +65,7 @@ export default function ImportarContactosScreen() {
         company: '',
         tags: [],
         favorito: false,
-        notes: `Importado del dispositivo el ${new Date().toLocaleDateString()}`,
+        notes: undefined,
       }));
 
     const result = await importContacts(contactsToImport);

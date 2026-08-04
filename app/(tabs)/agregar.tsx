@@ -49,7 +49,7 @@ export default function AgregarScreen() {
       empresaActual,
       empresasAnteriores,
       tags: tagsArray,
-      notes,
+      notes: undefined,
       favorito,
     });
 
