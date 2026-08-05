@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider as NavigationProvider } from '@r
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ContactsProvider } from '@/context/ContactsContext';
@@ -58,16 +59,19 @@ function RootLayoutContent() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <RemindersProvider>
-        <CompaniesProvider>
-          <ContactsProvider>
-            <NotesProvider>
-              <RootLayoutContent />
-            </NotesProvider>
-          </ContactsProvider>
-        </CompaniesProvider>
-      </RemindersProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <RemindersProvider>
+          <CompaniesProvider>
+            <ContactsProvider>
+              <NotesProvider>
+                <RootLayoutContent />
+              </NotesProvider>
+            </ContactsProvider>
+          </CompaniesProvider>
+        </RemindersProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
+

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColor } from '../hooks/use-theme-color';
 
 export interface SmartFABProps {
@@ -19,11 +20,14 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const cardColor = useThemeColor({}, 'card');
   const textColor = useThemeColor({}, 'text');
   const borderColor = useThemeColor({}, 'border');
   const accent1 = useThemeColor({}, 'accent1');
   const accent2 = useThemeColor({}, 'accent2');
+
+  const bottomOffset = insets.bottom + (Platform.OS === 'ios' ? 70 : 64);
 
   useEffect(() => {
     setIsOpen(false);
@@ -46,7 +50,7 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
         </TouchableWithoutFeedback>
       )}
 
-      <View style={styles.container} pointerEvents="box-none">
+      <View style={[styles.container, { bottom: bottomOffset }]} pointerEvents="box-none">
         {isOpen && (
           <View style={styles.menuContainer}>
             <TouchableOpacity
@@ -108,7 +112,6 @@ const styles = StyleSheet.create({
   },
   container: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 84 : 72,
     right: 20,
     alignItems: 'flex-end',
     zIndex: 999,
