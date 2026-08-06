@@ -7,17 +7,29 @@ import { runOnJS } from 'react-native-reanimated';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { SmartFAB } from '../../components/SmartFAB';
 import { ReminderModal } from '../../components/ReminderModal';
+import { ThemeToggleButton } from '../../components/ThemeToggleButton';
 import { useReminders } from '../../context/RemindersContext';
 import { useContacts } from '../../context/ContactsContext';
 
-const TAB_ROUTES = ['/index', '/contactos', '/favoritos', '/empresas', '/perfil'];
+const HOME_ROUTE = '/(tabs)';
+const TAB_ROUTES = [HOME_ROUTE, '/contactos', '/favoritos', '/empresas', '/perfil'];
+
+const isHomePath = (path: string): boolean => {
+  return (
+    path === '/' ||
+    path === '/index' ||
+    path === '/(tabs)' ||
+    path === '/(tabs)/' ||
+    path === '/(tabs)/index'
+  );
+};
 
 const getCurrentTabIndex = (path: string): number => {
-  if (path === '/' || path === '/index') return 0;
-  if (path.startsWith('/contactos')) return 1;
-  if (path.startsWith('/favoritos')) return 2;
-  if (path.startsWith('/empresas')) return 3;
-  if (path.startsWith('/perfil')) return 4;
+  if (isHomePath(path)) return 0;
+  if (path.startsWith('/contactos') || path.startsWith('/(tabs)/contactos')) return 1;
+  if (path.startsWith('/favoritos') || path.startsWith('/(tabs)/favoritos')) return 2;
+  if (path.startsWith('/empresas') || path.startsWith('/(tabs)/empresas')) return 3;
+  if (path.startsWith('/perfil') || path.startsWith('/(tabs)/perfil')) return 4;
   return -1;
 };
 
@@ -35,8 +47,7 @@ export default function TabLayout() {
   const borderColor = useThemeColor({}, 'border');
   const primaryColor = useThemeColor({}, 'primary');
 
-  const mainScreens = ['/', '/index', '/contactos', '/favoritos', '/empresas', '/perfil'];
-  const isMainScreen = mainScreens.includes(pathname);
+  const isMainScreen = getCurrentTabIndex(pathname) !== -1;
 
   const handleFABAddContact = useCallback(() => {
     router.push('/agregar');
@@ -72,11 +83,15 @@ export default function TabLayout() {
     }
   }, [pathname, router]);
 
+  // Gesto nativo de referencia para declarar coexistencia explícita con RefreshControl y FlatList scroll
+  const nativeGesture = useMemo(() => Gesture.Native(), []);
+
   const panGesture = useMemo(() => {
     return Gesture.Pan()
       .enabled(isMainScreen)
       .activeOffsetX([-35, 35])
       .failOffsetY([-15, 15])
+      .simultaneousWithExternalGesture(nativeGesture)
       .onEnd((e) => {
         'worklet';
         const { translationX, velocityX } = e;
@@ -91,7 +106,7 @@ export default function TabLayout() {
           }
         }
       });
-  }, [isMainScreen, handleTabSwipe]);
+  }, [isMainScreen, handleTabSwipe, nativeGesture]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -102,6 +117,7 @@ export default function TabLayout() {
               tabBarActiveTintColor: activeColor,
               tabBarInactiveTintColor: inactiveColor,
               headerShown: true,
+              headerRight: () => <ThemeToggleButton />,
               headerStyle: {
                 backgroundColor: backgroundColor,
               },

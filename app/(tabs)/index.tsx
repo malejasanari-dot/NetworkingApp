@@ -1,12 +1,11 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useContacts } from '../../context/ContactsContext';
 import { useCompanies } from '../../context/CompaniesContext';
 import { useReminders } from '../../context/RemindersContext';
 import { useNotes } from '../../context/NotesContext';
-import { useTheme } from '../../context/ThemeContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { formatDate } from '../../utils/date';
 import { MOCK_PROFILE } from '../../constants/MockData';
@@ -20,9 +19,9 @@ export default function HomeScreen() {
   const { contacts } = useContacts();
   const { companies } = useCompanies();
   const { notes } = useNotes();
-  const { theme, setTheme, isDark } = useTheme();
   const { getUpcomingReminders, addReminder } = useReminders();
   const [isReminderModalVisible, setIsReminderModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -32,6 +31,13 @@ export default function HomeScreen() {
   const secondaryText = useThemeColor({}, 'secondaryText');
   const accent1 = useThemeColor({}, 'accent1');
   const accent2 = useThemeColor({}, 'accent2');
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    requestAnimationFrame(() => {
+      setRefreshing(false);
+    });
+  }, []);
 
   const upcomingReminders = useMemo(() => {
     return getUpcomingReminders(7);
@@ -52,9 +58,6 @@ export default function HomeScreen() {
       .slice(0, 5);
   }, [companies, contacts]);
 
-  const toggleTheme = () => {
-    setTheme(isDark ? 'light' : 'dark');
-  };
 
   const totalContacts = contacts.length;
   const favoritesCount = useMemo(() => contacts.filter(c => c && c.favorito).length, [contacts]);
@@ -132,30 +135,27 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView style={[styles.container, { backgroundColor }]} contentContainerStyle={styles.content}>
-        {/* Header de Usuario con Toggle de Tema Discreto */}
+      <ScrollView
+        style={[styles.container, { backgroundColor }]}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[primaryColor]}
+            tintColor={primaryColor}
+          />
+        }
+      >
+        {/* Header de Usuario */}
         <View style={styles.userHeader}>
-          <View style={styles.userInfo}>
-            <View style={[styles.avatar, { backgroundColor: primaryColor + '15', borderColor: primaryColor }]}>
-              <Text style={[styles.avatarText, { color: primaryColor }]}>{MOCK_PROFILE.name.charAt(0)}</Text>
-            </View>
-            <View style={styles.userTextContainer}>
-              <Text style={[styles.greeting, { color: primaryColor }]}>¡Hola, {MOCK_PROFILE.name.split(' ')[0]}!</Text>
-              <Text style={[styles.userRole, { color: secondaryText }]} numberOfLines={1}>{MOCK_PROFILE.title}</Text>
-            </View>
+          <View style={[styles.avatar, { backgroundColor: primaryColor + '15', borderColor: primaryColor }]}>
+            <Text style={[styles.avatarText, { color: primaryColor }]}>{MOCK_PROFILE.name.charAt(0)}</Text>
           </View>
-
-          <TouchableOpacity 
-            style={[styles.themeToggleButton, { backgroundColor: cardColor, borderColor }]} 
-            onPress={toggleTheme}
-            activeOpacity={0.7}
-          >
-            <Ionicons 
-              name={isDark ? "sunny" : "moon"} 
-              size={20} 
-              color={isDark ? '#FFB800' : primaryColor} 
-            />
-          </TouchableOpacity>
+          <View style={styles.userTextContainer}>
+            <Text style={[styles.greeting, { color: primaryColor }]}>¡Hola, {MOCK_PROFILE.name.split(' ')[0]}!</Text>
+            <Text style={[styles.userRole, { color: secondaryText }]} numberOfLines={1}>{MOCK_PROFILE.title}</Text>
+          </View>
         </View>
 
         {/* Dashboard Estadístico con StatsDonutChart */}
@@ -250,7 +250,7 @@ export default function HomeScreen() {
             return (
               <TouchableOpacity 
                 key={reminder.id} 
-                style={[styles.reminderCard, { backgroundColor: cardColor, borderColor, opacity: contact ? 1 : 0.7 }]}
+                style={[styles.reminderCard, { backgroundColor: cardColor, borderColor, borderLeftColor: accent1, opacity: contact ? 1 : 0.7 }]}
                 onPress={() => {
                   if (contact) {
                     router.push(`/contacto/${reminder.contactoId}`);
@@ -313,15 +313,9 @@ const styles = StyleSheet.create({
   },
   userHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
     marginTop: 4,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
   },
   avatar: {
     width: 48,
@@ -346,15 +340,6 @@ const styles = StyleSheet.create({
   userRole: {
     fontSize: 13,
     marginTop: 2,
-  },
-  themeToggleButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 12,
   },
   statsCard: {
     borderRadius: 16,
@@ -460,7 +445,6 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#FF8F3B',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,

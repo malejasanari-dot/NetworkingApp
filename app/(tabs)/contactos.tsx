@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useLayoutEffect, useCallback } from 'react';
-import { StyleSheet, View, Text, FlatList, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { StyleSheet, View, Text, FlatList, ScrollView, TouchableOpacity, ActivityIndicator, Platform, RefreshControl } from 'react-native';
 import { ControlledInput } from '../../components/ui/controlled-input';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
@@ -8,6 +8,7 @@ import { useThemeColor } from '../../hooks/use-theme-color';
 import { ContactCard } from '../../components/ContactCard';
 import { CompanyFilterDropdown } from '../../components/CompanyFilterDropdown';
 import { useCompanies } from '../../context/CompaniesContext';
+import { ThemeToggleButton } from '../../components/ThemeToggleButton';
 
 export default function ContactosScreen() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function ContactosScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [activeCompanyFilter, setActiveCompanyFilter] = useState('ALL');
+  const [refreshing, setRefreshing] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -26,18 +28,31 @@ export default function ContactosScreen() {
   const accent1 = useThemeColor({}, 'accent1');
   const borderColor = useThemeColor({}, 'border');
 
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    requestAnimationFrame(() => {
+      setRefreshing(false);
+    });
+  }, []);
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity 
-          onPress={() => router.push('/contacto/importar')} 
-          style={{ marginRight: 15 }}
-        >
-          <Ionicons name="person-add-outline" size={24} color={primaryColor} />
-        </TouchableOpacity>
+        <View style={styles.headerRightContainer}>
+          <TouchableOpacity 
+            onPress={() => router.push('/contacto/importar')} 
+            style={styles.headerActionButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="Importar contactos"
+            accessibilityRole="button"
+          >
+            <Ionicons name="cloud-download-outline" size={22} color={primaryColor} />
+          </TouchableOpacity>
+          <ThemeToggleButton />
+        </View>
       ),
     });
-  }, [navigation, primaryColor]);
+  }, [navigation, primaryColor, router]);
 
   const availableTags = useMemo(() => {
     if (!contacts) return ['Todos'];
@@ -137,7 +152,12 @@ export default function ContactosScreen() {
 
       {/* Filter Tags */}
       <View style={styles.filtersContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.filtersScroll}
+          keyboardShouldPersistTaps="handled"
+        >
           {availableTags.map((tag, index) => {
             const isActive = tag === 'Todos' ? activeTags.length === 0 : activeTags.includes(tag);
             return (
@@ -173,6 +193,16 @@ export default function ContactosScreen() {
         maxToRenderPerBatch={10}
         windowSize={5}
         removeClippedSubviews={Platform.OS === 'android'}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[primaryColor]}
+            tintColor={primaryColor}
+          />
+        }
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: 40 }}>
             <Text style={{ color: secondaryText }}>
@@ -190,6 +220,17 @@ export default function ContactosScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerRightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerActionButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   searchContainer: {
     flexDirection: 'row',

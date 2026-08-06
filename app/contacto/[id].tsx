@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
@@ -191,183 +191,191 @@ export default function ContactDetailScreen() {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor }]} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        {/* ... actions ... */}
-        <View style={styles.headerActions}>
-          <TouchableOpacity 
-            style={[styles.headerButton, { backgroundColor: primaryColor + '15' }]} 
-            onPress={() => router.push(`/contacto/editar/${contact.id}`)}
-          >
-            <Ionicons name="pencil" size={20} color={primaryColor} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.headerButton, { backgroundColor: contact.favorito ? accent2 + '15' : primaryColor + '15' }]} 
-            onPress={handleToggleFavorite}
-          >
-            <Animated.View style={animatedStyle}>
-              <Ionicons 
-                name={contact.favorito ? "star" : "star-outline"} 
-                size={22} 
-                color={contact.favorito ? accent2 : primaryColor} 
-              />
-            </Animated.View>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.avatar, { backgroundColor: '#4F185A', borderColor: '#4F185A' }]}>
-          <Text style={[styles.avatarText, { color: '#FFFFFF' }]}>{contact.name.charAt(0)}</Text>
-        </View>
-        <Text style={[styles.name, { color: primaryColor }]}>{contact.name}</Text>
-        
-        {empresaActualObj ? (
-          <TouchableOpacity onPress={() => router.push(`/empresa/${empresaActualObj.id}`)}>
-             <Text style={[styles.company, { color: primaryColor, textDecorationLine: 'underline' }]}>
-               {empresaActualObj.name}
-             </Text>
-          </TouchableOpacity>
-        ) : (
-          <Text style={[styles.company, { color: secondaryText }]}>{contact.company || 'Sin empresa'}</Text>
-        )}
-
-        {empresasAnterioresStr ? (
-          <Text style={styles.anterioresText}>
-            Anteriores: {empresasAnterioresStr}
-          </Text>
-        ) : null}
-        
-        
-        {contact.favorito && (
-          <View style={[styles.favoriteBadge, { backgroundColor: accent2 + '15', borderColor: accent2 + '30' }]}>
-            <Ionicons name="star" size={16} color={accent2} />
-            <Text style={[styles.favoriteText, { color: accent2 }]}>Favorito</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Reminders Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Seguimiento</Text>
-          <TouchableOpacity style={styles.addButton} onPress={openAddReminder}>
-            <Ionicons name="add-circle" size={24} color={accent1} />
-            <Text style={[styles.addButtonText, { color: accent1 }]}>Añadir</Text>
-          </TouchableOpacity>
-        </View>
-
-        {contactReminders.map(reminder => (
-          <View key={reminder.id} style={[styles.reminderItem, { backgroundColor: cardColor, borderColor }]}>
-            <View style={styles.reminderContent}>
-              <View style={styles.reminderTop}>
-                <Ionicons name="notifications-outline" size={16} color={accent1} />
-                <Text style={[styles.reminderDate, { color: accent1 }]}>{formatDate(reminder.fecha)}</Text>
-              </View>
-              <Text style={[styles.reminderNote, { color: textColor }]}>{reminder.nota || 'Sin nota'}</Text>
-            </View>
-            <View style={styles.reminderActions}>
-              <TouchableOpacity onPress={() => openEditReminder(reminder)}>
-                <Ionicons name="create-outline" size={20} color={secondaryText} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDeleteReminder(reminder.id)}>
-                <Ionicons name="trash-outline" size={20} color={accent2} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
-
-        {contactReminders.length === 0 && (
-          <Text style={[styles.noDataText, { color: secondaryText }]}>No hay recordatorios configurados.</Text>
-        )}
-      </View>
-
-      {/* History Notes Section */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Historial de Interacciones</Text>
-        
-        <View style={[styles.noteInputContainer, { backgroundColor: cardColor, borderColor }]}>
-          <TextInput
-            style={[styles.noteInput, { color: textColor }]}
-            placeholder={editingNoteId ? "Editando nota..." : "Escribe una nueva nota de tu interacción..."}
-            placeholderTextColor={secondaryText}
-            multiline
-            value={newNoteContent}
-            onChangeText={setNewNoteContent}
-          />
-          <View style={styles.noteInputFooter}>
-            {editingNoteId && (
-              <TouchableOpacity style={styles.cancelEditButton} onPress={cancelEditingNote}>
-                <Text style={{ color: secondaryText }}>Cancelar</Text>
-              </TouchableOpacity>
-            )}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView 
+        style={[styles.container, { backgroundColor }]} 
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <View style={styles.header}>
+          <View style={styles.headerActions}>
             <TouchableOpacity 
-              style={[styles.saveNoteButton, { backgroundColor: primaryColor }]} 
-              onPress={handleAddOrUpdateNote}
+              style={[styles.headerButton, { backgroundColor: primaryColor + '15' }]} 
+              onPress={() => router.push(`/contacto/editar/${contact.id}`)}
             >
-              <Text style={styles.saveNoteButtonText}>{editingNoteId ? "Actualizar" : "Guardar Nota"}</Text>
+              <Ionicons name="pencil" size={20} color={primaryColor} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.headerButton, { backgroundColor: contact.favorito ? accent2 + '15' : primaryColor + '15' }]} 
+              onPress={handleToggleFavorite}
+            >
+              <Animated.View style={animatedStyle}>
+                <Ionicons 
+                  name={contact.favorito ? "star" : "star-outline"} 
+                  size={22} 
+                  color={contact.favorito ? accent2 : primaryColor} 
+                />
+              </Animated.View>
             </TouchableOpacity>
           </View>
+
+          <View style={[styles.avatar, { backgroundColor: primaryColor, borderColor: primaryColor }]}>
+            <Text style={[styles.avatarText, { color: '#FFFFFF' }]}>{contact.name.charAt(0)}</Text>
+          </View>
+          <Text style={[styles.name, { color: primaryColor }]}>{contact.name}</Text>
+          
+          {empresaActualObj ? (
+            <TouchableOpacity onPress={() => router.push(`/empresa/${empresaActualObj.id}`)}>
+               <Text style={[styles.company, { color: primaryColor, textDecorationLine: 'underline' }]}>
+                 {empresaActualObj.name}
+               </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.company, { color: secondaryText }]}>{contact.company || 'Sin empresa'}</Text>
+          )}
+
+          {empresasAnterioresStr ? (
+            <Text style={[styles.anterioresText, { color: secondaryText }]}>
+              Anteriores: {empresasAnterioresStr}
+            </Text>
+          ) : null}
+          
+          
+          {contact.favorito && (
+            <View style={[styles.favoriteBadge, { backgroundColor: accent2 + '15', borderColor: accent2 + '30' }]}>
+              <Ionicons name="star" size={16} color={accent2} />
+              <Text style={[styles.favoriteText, { color: accent2 }]}>Favorito</Text>
+            </View>
+          )}
         </View>
 
-        {contactNotes.map((note, index) => (
-          <View key={note.id} style={[styles.noteCard, { backgroundColor: index % 2 === 0 ? cardColor : primaryColor + '08', borderColor }]}>
-            <View style={styles.noteCardHeader}>
-              <Text style={[styles.noteDate, { color: secondaryText }]}>{formatDate(note.fecha)}</Text>
-              <View style={styles.noteCardActions}>
-                <TouchableOpacity onPress={() => startEditingNote(note)}>
-                  <Ionicons name="pencil-outline" size={16} color={secondaryText} />
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Seguimiento</Text>
+            <TouchableOpacity style={styles.addButton} onPress={openAddReminder}>
+              <Ionicons name="add-circle" size={24} color={accent1} />
+              <Text style={[styles.addButtonText, { color: accent1 }]}>Añadir</Text>
+            </TouchableOpacity>
+          </View>
+
+          {contactReminders.map(reminder => (
+            <View key={reminder.id} style={[styles.reminderItem, { backgroundColor: cardColor, borderColor }]}>
+              <View style={styles.reminderContent}>
+                <View style={styles.reminderTop}>
+                  <Ionicons name="notifications-outline" size={16} color={accent1} />
+                  <Text style={[styles.reminderDate, { color: accent1 }]}>{formatDate(reminder.fecha)}</Text>
+                </View>
+                <Text style={[styles.reminderNote, { color: textColor }]}>{reminder.nota || 'Sin nota'}</Text>
+              </View>
+              <View style={styles.reminderActions}>
+                <TouchableOpacity onPress={() => openEditReminder(reminder)}>
+                  <Ionicons name="create-outline" size={20} color={secondaryText} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDeleteNote(note.id)}>
-                  <Ionicons name="trash-outline" size={16} color={accent2} />
+                <TouchableOpacity onPress={() => handleDeleteReminder(reminder.id)}>
+                  <Ionicons name="trash-outline" size={20} color={accent2} />
                 </TouchableOpacity>
               </View>
             </View>
-            <Text style={[styles.noteContent, { color: textColor }]}>{note.contenido}</Text>
-          </View>
-        ))}
-
-        {contactNotes.length === 0 && (
-          <Text style={[styles.noDataText, { color: secondaryText }]}>No hay historial registrado.</Text>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Información de Contacto</Text>
-        <View style={[styles.infoRow, { backgroundColor: cardColor, borderColor }]}>
-          <Ionicons name="call-outline" size={24} color={primaryColor} />
-          <Text style={[styles.infoText, { color: textColor }]}>{contact.phone || 'No registrado'}</Text>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Etiquetas</Text>
-        <View style={styles.tagsContainer}>
-          {contact.tags.map((tag, index) => (
-            <View key={index} style={[styles.tagBadge, { backgroundColor: '#FDF361' }]}>
-              <Text style={[styles.tagText, { color: '#333333' }]}>{tag}</Text>
-            </View>
           ))}
-          {contact.tags.length === 0 && (
-            <Text style={[styles.noDataText, { color: secondaryText }]}>Sin etiquetas</Text>
+
+          {contactReminders.length === 0 && (
+            <Text style={[styles.noDataText, { color: secondaryText }]}>No hay recordatorios configurados.</Text>
           )}
         </View>
-      </View>
 
-      <TouchableOpacity style={[styles.deleteButton, { backgroundColor: accent2 }]} onPress={handleDelete}>
-        <Ionicons name="trash-outline" size={20} color="#FFF" />
-        <Text style={styles.deleteButtonText}>Eliminar Contacto</Text>
-      </TouchableOpacity>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Historial de Interacciones</Text>
+          
+          <View style={[styles.noteInputContainer, { backgroundColor: cardColor, borderColor }]}>
+            <TextInput
+              style={[styles.noteInput, { color: textColor }]}
+              placeholder={editingNoteId ? "Editando nota..." : "Escribe una nueva nota de tu interacción..."}
+              placeholderTextColor={secondaryText}
+              multiline
+              value={newNoteContent}
+              onChangeText={setNewNoteContent}
+            />
+            <View style={styles.noteInputFooter}>
+              {editingNoteId && (
+                <TouchableOpacity style={styles.cancelEditButton} onPress={cancelEditingNote}>
+                  <Text style={{ color: secondaryText }}>Cancelar</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity 
+                style={[styles.saveNoteButton, { backgroundColor: primaryColor }]} 
+                onPress={handleAddOrUpdateNote}
+              >
+                <Text style={styles.saveNoteButtonText}>{editingNoteId ? "Actualizar" : "Guardar Nota"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-      <ReminderModal 
-        isVisible={isModalVisible}
-        onClose={() => {
-          setIsModalVisible(false);
-          setEditingReminder(undefined);
-        }}
-        onSave={handleSaveReminder}
-        initialData={editingReminder}
-      />
-    </ScrollView>
+          {contactNotes.map((note, index) => (
+            <View key={note.id} style={[styles.noteCard, { backgroundColor: index % 2 === 0 ? cardColor : primaryColor + '08', borderColor }]}>
+              <View style={styles.noteCardHeader}>
+                <Text style={[styles.noteDate, { color: secondaryText }]}>{formatDate(note.fecha)}</Text>
+                <View style={styles.noteCardActions}>
+                  <TouchableOpacity onPress={() => startEditingNote(note)}>
+                    <Ionicons name="pencil-outline" size={16} color={secondaryText} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDeleteNote(note.id)}>
+                    <Ionicons name="trash-outline" size={16} color={accent2} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <Text style={[styles.noteContent, { color: textColor }]}>{note.contenido}</Text>
+            </View>
+          ))}
+
+          {contactNotes.length === 0 && (
+            <Text style={[styles.noDataText, { color: secondaryText }]}>No hay historial registrado.</Text>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Información de Contacto</Text>
+          <View style={[styles.infoRow, { backgroundColor: cardColor, borderColor }]}>
+            <Ionicons name="call-outline" size={24} color={primaryColor} />
+            <Text style={[styles.infoText, { color: textColor }]}>{contact.phone || 'No registrado'}</Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Etiquetas</Text>
+          <View style={styles.tagsContainer}>
+            {contact.tags.map((tag, index) => (
+              <View key={index} style={[styles.tagBadge, { backgroundColor: '#FDF361' }]}>
+                <Text style={[styles.tagText, { color: '#333333' }]}>{tag}</Text>
+              </View>
+            ))}
+            {contact.tags.length === 0 && (
+              <Text style={[styles.noDataText, { color: secondaryText }]}>Sin etiquetas</Text>
+            )}
+          </View>
+        </View>
+
+        <TouchableOpacity style={[styles.deleteButton, { backgroundColor: accent2 }]} onPress={handleDelete}>
+          <Ionicons name="trash-outline" size={20} color="#FFF" />
+          <Text style={styles.deleteButtonText}>Eliminar Contacto</Text>
+        </TouchableOpacity>
+
+        <ReminderModal 
+          isVisible={isModalVisible}
+          onClose={() => {
+            setIsModalVisible(false);
+            setEditingReminder(undefined);
+          }}
+          onSave={handleSaveReminder}
+          initialData={editingReminder}
+        />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -377,6 +385,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
+    paddingBottom: 60,
   },
   errorContainer: {
     flex: 1,
@@ -437,7 +446,6 @@ const styles = StyleSheet.create({
   },
   anterioresText: {
     fontSize: 14,
-    color: '#888',
     marginBottom: 12,
   },
   favoriteBadge: {

@@ -1,5 +1,5 @@
-import React, { useMemo, useCallback } from 'react';
-import { StyleSheet, View, Text, FlatList, ActivityIndicator } from 'react-native';
+import React, { useState, useMemo, useCallback } from 'react';
+import { StyleSheet, View, Text, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useContacts } from '../../context/ContactsContext';
@@ -9,6 +9,7 @@ import { ContactCard } from '../../components/ContactCard';
 export default function FavoritosScreen() {
   const router = useRouter();
   const { contacts, isLoading, updateContact } = useContacts();
+  const [refreshing, setRefreshing] = useState(false);
   const favoriteContacts = useMemo(
     () => contacts.filter(contact => contact && contact.favorito),
     [contacts]
@@ -20,6 +21,13 @@ export default function FavoritosScreen() {
   const primaryColor = useThemeColor({}, 'primary');
   const accent2 = useThemeColor({}, 'accent2');
   const borderColor = useThemeColor({}, 'border');
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    requestAnimationFrame(() => {
+      setRefreshing(false);
+    });
+  }, []);
 
   const handlePressContact = useCallback((id: string) => {
     router.push(`/contacto/${id}`);
@@ -58,6 +66,14 @@ export default function FavoritosScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         renderItem={renderContactItem}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[primaryColor]}
+            tintColor={primaryColor}
+          />
+        }
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: 40 }}>
             <Text style={{ color: secondaryText }}>Aún no tienes contactos marcados como favoritos.</Text>

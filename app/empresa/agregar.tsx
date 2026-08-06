@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { ControlledInput } from '../../components/ui/controlled-input';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../context/CompaniesContext';
+import { useThemeColor } from '../../hooks/use-theme-color';
 
 export default function AgregarEmpresaScreen() {
   const router = useRouter();
@@ -13,6 +14,14 @@ export default function AgregarEmpresaScreen() {
   const [sector, setSector] = useState('');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardColor = useThemeColor({}, 'card');
+  const textColor = useThemeColor({}, 'text');
+  const secondaryText = useThemeColor({}, 'secondaryText');
+  const primaryColor = useThemeColor({}, 'primary');
+  const accent1 = useThemeColor({}, 'accent1');
+  const borderColor = useThemeColor({}, 'border');
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -36,20 +45,31 @@ export default function AgregarEmpresaScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView 
+        style={[styles.scroll, { backgroundColor }]}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
       <View style={styles.header}>
-        <Text style={styles.title}>Nueva Empresa</Text>
-        <Text style={styles.subtitle}>Crea una entidad para organizar tus contactos de red profesional.</Text>
+        <Text style={[styles.title, { color: primaryColor }]}>Nueva Empresa</Text>
+        <Text style={[styles.subtitle, { color: secondaryText }]}>Crea una entidad para organizar tus contactos de red profesional.</Text>
       </View>
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Nombre de la Empresa *</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="business-outline" size={20} color="#4F185A" style={styles.inputIcon} />
+          <Text style={[styles.label, { color: primaryColor }]}>Nombre de la Empresa *</Text>
+          <View style={[styles.inputWrapper, { backgroundColor: cardColor, borderColor }]}>
+            <Ionicons name="business-outline" size={20} color={primaryColor} style={styles.inputIcon} />
             <ControlledInput
-              style={styles.input}
+              style={[styles.input, { color: textColor }]}
               placeholder="Ej: Google, Tech startups..."
+              placeholderTextColor={secondaryText}
               value={name}
               onChangeText={setName}
             />
@@ -57,12 +77,13 @@ export default function AgregarEmpresaScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Sector / Industria</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="hammer-outline" size={20} color="#4F185A" style={styles.inputIcon} />
+          <Text style={[styles.label, { color: primaryColor }]}>Sector / Industria</Text>
+          <View style={[styles.inputWrapper, { backgroundColor: cardColor, borderColor }]}>
+            <Ionicons name="hammer-outline" size={20} color={primaryColor} style={styles.inputIcon} />
             <ControlledInput
-              style={styles.input}
+              style={[styles.input, { color: textColor }]}
               placeholder="Ej: Tecnología, Diseño, Salud..."
+              placeholderTextColor={secondaryText}
               value={sector}
               onChangeText={setSector}
             />
@@ -70,11 +91,12 @@ export default function AgregarEmpresaScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Notas</Text>
-          <View style={[styles.inputWrapper, styles.textAreaWrapper]}>
+          <Text style={[styles.label, { color: primaryColor }]}>Notas</Text>
+          <View style={[styles.inputWrapper, styles.textAreaWrapper, { backgroundColor: cardColor, borderColor }]}>
             <ControlledInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { color: textColor }]}
               placeholder="Información adicional sobre la empresa..."
+              placeholderTextColor={secondaryText}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
@@ -85,7 +107,7 @@ export default function AgregarEmpresaScreen() {
         </View>
 
         <TouchableOpacity 
-          style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} 
+          style={[styles.saveButton, { backgroundColor: accent1 }, isSaving && styles.saveButtonDisabled]} 
           onPress={handleSave}
           disabled={isSaving}
         >
@@ -99,17 +121,21 @@ export default function AgregarEmpresaScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+  },
+  scroll: {
+    flex: 1,
   },
   content: {
     padding: 24,
+    paddingBottom: 60,
   },
   header: {
     marginBottom: 32,
@@ -117,12 +143,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#4F185A',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
     lineHeight: 22,
   },
   form: {
@@ -134,16 +158,13 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#4F185A',
     marginLeft: 4,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
     paddingHorizontal: 12,
   },
   inputIcon: {
@@ -153,7 +174,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 50,
     fontSize: 16,
-    color: '#1A1A1A',
   },
   textAreaWrapper: {
     paddingVertical: 12,
@@ -162,14 +182,13 @@ const styles = StyleSheet.create({
     height: 100,
   },
   saveButton: {
-    backgroundColor: '#FF8F3B',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 12,
-    shadowColor: '#FF8F3B',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import * as Contacts from 'expo-contacts';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -106,30 +106,36 @@ export default function ImportarContactosScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor }]}>
-      <View style={[styles.header, { backgroundColor: cardColor, borderBottomColor: borderColor }]}>
-        <Text style={[styles.title, { color: primaryColor }]}>Seleccionar Contactos</Text>
-        <Text style={[styles.subtitle, { color: secondaryText }]}>{deviceContacts.length} contactos encontrados en tu dispositivo</Text>
-      </View>
-
-      <View style={[styles.searchContainer, { backgroundColor }]}>
-        <View style={[styles.searchBox, { backgroundColor: cardColor, borderColor }]}>
-          <Ionicons name="search" size={20} color={secondaryText} style={styles.searchIcon} />
-          <TextInput
-            style={[styles.searchInput, { color: textColor }]}
-            placeholder="Buscar contacto por nombre..."
-            placeholderTextColor={secondaryText}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View style={[styles.container, { backgroundColor }]}>
+        <View style={[styles.header, { backgroundColor: cardColor, borderBottomColor: borderColor }]}>
+          <Text style={[styles.title, { color: primaryColor }]}>Seleccionar Contactos</Text>
+          <Text style={[styles.subtitle, { color: secondaryText }]}>{deviceContacts.length} contactos encontrados en tu dispositivo</Text>
         </View>
-      </View>
 
-      <FlatList
-        data={filteredContacts}
-        keyExtractor={(item: any) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }: { item: any }) => {
+        <View style={[styles.searchContainer, { backgroundColor }]}>
+          <View style={[styles.searchBox, { backgroundColor: cardColor, borderColor }]}>
+            <Ionicons name="search" size={20} color={secondaryText} style={styles.searchIcon} />
+            <TextInput
+              style={[styles.searchInput, { color: textColor }]}
+              placeholder="Buscar contacto por nombre..."
+              placeholderTextColor={secondaryText}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        </View>
+
+        <FlatList
+          data={filteredContacts}
+          keyExtractor={(item: any) => item.id}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          renderItem={({ item }: { item: any }) => {
           const isSelected = selectedIds.has(item.id);
           const phoneNumber = item.phoneNumbers && item.phoneNumbers.length > 0 ? item.phoneNumbers[0].number : 'Sin número';
           
@@ -179,6 +185,7 @@ export default function ImportarContactosScreen() {
         </TouchableOpacity>
       </View>
     </View>
+  </KeyboardAvoidingView>
   );
 }
 

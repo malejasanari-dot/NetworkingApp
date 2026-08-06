@@ -111,6 +111,8 @@ export function CompanySelector({
           <FlatList
             data={filteredCompanies}
             keyExtractor={item => item.id}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             ListHeaderComponent={
               !multiple ? (
                 <TouchableOpacity 

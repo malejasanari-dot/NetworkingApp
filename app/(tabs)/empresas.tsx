@@ -1,10 +1,11 @@
 import React, { useMemo, useLayoutEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, Platform, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import { useCompanies, Company } from '../../context/CompaniesContext';
 import { useContacts } from '../../context/ContactsContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
+import { ThemeToggleButton } from '../../components/ThemeToggleButton';
 
 export default function EmpresasScreen() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function EmpresasScreen() {
   const { companies, syncCompanies, isLoading: loadingCompanies } = useCompanies();
   const { contacts, updateContact, isLoading: loadingContacts } = useContacts();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -19,6 +21,13 @@ export default function EmpresasScreen() {
   const primaryColor = useThemeColor({}, 'primary');
   const accent1 = useThemeColor({}, 'accent1');
   const borderColor = useThemeColor({}, 'border');
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    requestAnimationFrame(() => {
+      setRefreshing(false);
+    });
+  }, []);
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -50,20 +59,26 @@ export default function EmpresasScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity 
-          onPress={handleSync} 
-          style={{ marginRight: 15 }}
-          disabled={isSyncing}
-        >
-          {isSyncing ? (
-            <ActivityIndicator size="small" color={primaryColor} />
-          ) : (
-            <Ionicons name="refresh-circle-outline" size={28} color={primaryColor} />
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerRightContainer}>
+          <TouchableOpacity 
+            onPress={handleSync} 
+            style={styles.headerActionButton}
+            disabled={isSyncing}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="Sincronizar empresas"
+            accessibilityRole="button"
+          >
+            {isSyncing ? (
+              <ActivityIndicator size="small" color={primaryColor} />
+            ) : (
+              <Ionicons name="refresh-outline" size={22} color={primaryColor} />
+            )}
+          </TouchableOpacity>
+          <ThemeToggleButton />
+        </View>
       ),
     });
-  }, [navigation, contacts, isSyncing, primaryColor]);
+  }, [navigation, contacts, isSyncing, primaryColor, handleSync]);
 
   const companiesWithCount = useMemo(() => {
     return companies.map(company => {
@@ -120,6 +135,14 @@ export default function EmpresasScreen() {
         maxToRenderPerBatch={10}
         windowSize={5}
         removeClippedSubviews={Platform.OS === 'android'}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[primaryColor]}
+            tintColor={primaryColor}
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="business-outline" size={64} color={borderColor} />
@@ -135,6 +158,17 @@ export default function EmpresasScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerRightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerActionButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   listContent: {
     padding: 16,

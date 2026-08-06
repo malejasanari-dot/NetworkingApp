@@ -80,8 +80,13 @@ export default function AgregarScreen() {
     <KeyboardAvoidingView 
       style={[styles.container, { backgroundColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         
         <View style={styles.header}>
           <View style={[styles.avatarPlaceholder, { backgroundColor: primaryColor + '10', borderColor: primaryColor }]}>
@@ -185,7 +190,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 60,
   },
   header: {
     alignItems: 'center',

@@ -98,6 +98,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalContainer}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
           >
             <View style={[styles.modalContent, { backgroundColor, borderColor }]}>
               <View style={styles.header}>

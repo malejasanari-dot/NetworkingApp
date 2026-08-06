@@ -5,6 +5,7 @@ import { CompanySelector } from '../../../components/CompanySelector';
 import { useCompanies } from '../../../context/CompaniesContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useContacts } from '../../../context/ContactsContext';
+import { useThemeColor } from '../../../hooks/use-theme-color';
 import { parseTags, formatTags } from '../../../utils/tags';
 
 export default function EditarScreen() {
@@ -22,6 +23,14 @@ export default function EditarScreen() {
   const [tagsInput, setTagsInput] = useState('');
   const [favorito, setFavorito] = useState(false);
 
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardColor = useThemeColor({}, 'card');
+  const textColor = useThemeColor({}, 'text');
+  const secondaryText = useThemeColor({}, 'secondaryText');
+  const primaryColor = useThemeColor({}, 'primary');
+  const accent2 = useThemeColor({}, 'accent2');
+  const borderColor = useThemeColor({}, 'border');
+
   useEffect(() => {
     if (contact) {
       setName(contact.name || '');
@@ -35,9 +44,9 @@ export default function EditarScreen() {
 
   if (!contact) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Contacto no encontrado.</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      <View style={[styles.errorContainer, { backgroundColor }]}>
+        <Text style={[styles.errorText, { color: secondaryText }]}>Contacto no encontrado.</Text>
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: primaryColor }]} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>Volver</Text>
         </TouchableOpacity>
       </View>
@@ -72,33 +81,38 @@ export default function EditarScreen() {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container}
+      style={[styles.container, { backgroundColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Editar Contacto</Text>
+          <Text style={[styles.headerTitle, { color: primaryColor }]}>Editar Contacto</Text>
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Nombre completo *</Text>
+          <Text style={[styles.label, { color: primaryColor }]}>Nombre completo *</Text>
           <ControlledInput 
-            style={styles.input}
+            style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
             placeholder="Ej. Juan Pérez"
-            placeholderTextColor="#A0A0A0"
+            placeholderTextColor={secondaryText}
             value={name}
             onChangeText={setName}
           />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Teléfono</Text>
+          <Text style={[styles.label, { color: primaryColor }]}>Teléfono</Text>
           <ControlledInput 
-            style={styles.input}
+            style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
             placeholder="Ej. +34 600 000 000"
             keyboardType="phone-pad"
-            placeholderTextColor="#A0A0A0"
+            placeholderTextColor={secondaryText}
             value={phone}
             onChangeText={setPhone}
           />
@@ -124,35 +138,35 @@ export default function EditarScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Etiquetas (separadas por coma)</Text>
+          <Text style={[styles.label, { color: primaryColor }]}>Etiquetas (separadas por coma)</Text>
           <ControlledInput 
-            style={styles.input}
+            style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
             placeholder="Ej. Evento, Inversor, Marketing"
-            placeholderTextColor="#A0A0A0"
+            placeholderTextColor={secondaryText}
             value={tagsInput}
             onChangeText={setTagsInput}
           />
         </View>
 
-        <View style={styles.switchGroup}>
+        <View style={[styles.switchGroup, { backgroundColor: cardColor, borderColor }]}>
           <View>
-            <Text style={styles.switchLabel}>Marcar como Favorito</Text>
-            <Text style={styles.switchSubLabel}>Aparecerá destacado en la lista</Text>
+            <Text style={[styles.switchLabel, { color: primaryColor }]}>Marcar como Favorito</Text>
+            <Text style={[styles.switchSubLabel, { color: secondaryText }]}>Aparecerá destacado en la lista</Text>
           </View>
           <Switch 
             value={favorito}
             onValueChange={setFavorito}
-            trackColor={{ false: '#E5E5E5', true: '#E23369' }}
+            trackColor={{ false: borderColor, true: accent2 }}
             thumbColor={'#FFFFFF'}
           />
         </View>
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <TouchableOpacity style={[styles.saveButton, { backgroundColor: primaryColor }]} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Guardar Cambios</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
-          <Text style={styles.cancelButtonText}>Cancelar</Text>
+        <TouchableOpacity style={[styles.cancelButton, { borderColor }]} onPress={() => router.back()}>
+          <Text style={[styles.cancelButtonText, { color: secondaryText }]}>Cancelar</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -163,11 +177,10 @@ export default function EditarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   content: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 60,
   },
   header: {
     alignItems: 'center',
@@ -176,7 +189,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 22,
-    color: '#4F185A',
     fontWeight: 'bold',
   },
   formGroup: {
@@ -185,31 +197,24 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#4F185A',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E5E5',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#1A1A1A',
   },
-
   switchGroup: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
-    marginBottom: 24,
+    marginBottom: 32,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
-    shadowColor: '#4F185A',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 5,
@@ -218,15 +223,12 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#4F185A',
     marginBottom: 4,
   },
   switchSubLabel: {
     fontSize: 12,
-    color: '#666666',
   },
   saveButton: {
-    backgroundColor: '#4F185A',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -247,11 +249,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E5E5',
-    backgroundColor: '#FAFAFA',
   },
   cancelButtonText: {
-    color: '#666',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -262,11 +261,9 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: '#666',
     marginBottom: 16,
   },
   backButton: {
-    backgroundColor: '#4F185A',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,

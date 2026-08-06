@@ -56,7 +56,7 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
       activeOpacity={0.7}
     >
       <View style={styles.header}>
-        <View style={[styles.avatarContainer, { backgroundColor: '#4F185A' }]}>
+        <View style={[styles.avatarContainer, { backgroundColor: primaryColor }]}>
           <Text style={[styles.avatarText, { color: '#FFFFFF' }]}>{contact.name.charAt(0)}</Text>
         </View>
         <View style={styles.infoContainer}>
