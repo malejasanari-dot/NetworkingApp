@@ -5,23 +5,17 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useContacts } from '../../context/ContactsContext';
 import { useCompanies } from '../../context/CompaniesContext';
-import { useNotes } from '../../context/NotesContext';
 import { useReminders } from '../../context/RemindersContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { formatDate } from '../../utils/date';
 import { MOCK_PROFILE } from '../../constants/MockData';
 import { StatsDonutChart } from '../../components/StatsDonutChart';
-import { RecentActivityFeed, ActivityItem } from '../../components/RecentActivityFeed';
-import { SmartFAB } from '../../components/SmartFAB';
-import { ReminderModal } from '../../components/ReminderModal';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { contacts, refreshContacts } = useContacts();
   const { companies, refreshCompanies } = useCompanies();
-  const { notes } = useNotes();
-  const { getUpcomingReminders, addReminder } = useReminders();
-  const [isReminderModalVisible, setIsReminderModalVisible] = useState(false);
+  const { reminders, getUpcomingReminders } = useReminders();
   const [refreshing, setRefreshing] = useState(false);
   
   const backgroundColor = useThemeColor({}, 'background');
@@ -55,21 +49,9 @@ export default function HomeScreen() {
     return getUpcomingReminders(7);
   }, [getUpcomingReminders]);
 
-  const topCompanies = useMemo(() => {
-    return companies
-      .map(company => {
-        const count = contacts.filter(
-          c => c.empresaActual === company.id || 
-               c.empresasAnteriores?.includes(company.id) ||
-               (!c.empresaActual && c.company && c.company.toLowerCase() === company.name.toLowerCase())
-        ).length;
-        return { ...company, contactCount: count };
-      })
-      .filter(c => c.contactCount > 0)
-      .sort((a, b) => b.contactCount - a.contactCount)
-      .slice(0, 5);
-  }, [companies, contacts]);
-
+  const totalRemindersCount = useMemo(() => {
+    return (reminders || []).length;
+  }, [reminders]);
 
   const totalContacts = contacts.length;
   const favoritesCount = useMemo(() => contacts.filter(c => c && c.favorito).length, [contacts]);
@@ -86,64 +68,28 @@ export default function HomeScreen() {
     return Math.round((favoritesCount / totalContacts) * 100);
   }, [favoritesCount, totalContacts]);
 
-  const remindersPercentage = useMemo(() => {
-    if (totalContacts === 0) return 0;
-    return Math.round((upcomingReminders.length / totalContacts) * 100);
-  }, [upcomingReminders, totalContacts]);
+  // 2 contactos más recientes
+  const recentContacts = useMemo(() => {
+    return [...(contacts || [])]
+      .sort((a, b) => {
+        const timeA = a.dateAdded ? new Date(a.dateAdded).getTime() : 0;
+        const timeB = b.dateAdded ? new Date(b.dateAdded).getTime() : 0;
+        return timeB - timeA;
+      })
+      .slice(0, 2);
+  }, [contacts]);
 
-  const recentActivities = useMemo<ActivityItem[]>(() => {
-    const contactEvents: ActivityItem[] = (contacts || []).map(c => ({
-      id: `contact_${c.id}`,
-      type: 'contact',
-      date: c.dateAdded || new Date().toISOString(),
-      contactId: c.id,
-      contactName: c.name,
-    }));
-
-    const noteEvents: ActivityItem[] = (notes || []).map(n => {
-      const contactObj = (contacts || []).find(c => c.id === n.contactoId);
-      return {
-        id: `note_${n.id}`,
-        type: 'note',
-        date: n.fecha,
-        contactId: n.contactoId,
-        contactName: contactObj ? contactObj.name : 'Contacto no disponible',
-        content: n.contenido,
-      };
-    });
-
-    const combined = [...contactEvents, ...noteEvents];
-    return combined
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 5);
-  }, [contacts, notes]);
-
-  const handlePressActivity = useCallback((item: ActivityItem) => {
-    if (item && item.contactId) {
-      router.push(`/contacto/${item.contactId}`);
-    }
-  }, [router]);
-
-  const handleFABAddContact = useCallback(() => {
-    router.push('/agregar');
-  }, [router]);
-
-  const handleFABAddCompany = useCallback(() => {
-    router.push('/empresa/agregar');
-  }, [router]);
-
-  const handleFABAddReminder = useCallback(() => {
-    setIsReminderModalVisible(true);
-  }, []);
-
-  const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string }) => {
-    const defaultContactId = contacts.length > 0 ? contacts[0].id : '';
-    await addReminder({
-      contactoId: defaultContactId,
-      fecha: data.fecha,
-      nota: data.nota,
-    });
-  }, [contacts, addReminder]);
+  // 2 empresas más recientes
+  const recentCompanies = useMemo(() => {
+    return [...(companies || [])]
+      .sort((a, b) => {
+        const timeA = (a as any).dateAdded ? new Date((a as any).dateAdded).getTime() : 0;
+        const timeB = (b as any).dateAdded ? new Date((b as any).dateAdded).getTime() : 0;
+        if (timeA && timeB) return timeB - timeA;
+        return 0; // mantener orden de inserción
+      })
+      .slice(0, 2);
+  }, [companies]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -159,7 +105,7 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Header de Usuario */}
+        {/* 1. Encabezado */}
         <View style={styles.userHeader}>
           <View style={[styles.avatar, { backgroundColor: primaryColor + '15', borderColor: primaryColor }]}>
             <Text style={[styles.avatarText, { color: primaryColor }]}>{MOCK_PROFILE.name.charAt(0)}</Text>
@@ -170,17 +116,15 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Dashboard Estadístico con StatsDonutChart */}
+        {/* 2. Salud de mi Red (Ancho completo) */}
         <View style={[styles.statsCard, { backgroundColor: cardColor, borderColor }]}>
           <Text style={[styles.statsCardTitle, { color: primaryColor }]}>Salud de mi Red</Text>
           
           <StatsDonutChart 
             companyPercentage={companyPercentage}
             favoritesPercentage={favoritesPercentage}
-            remindersPercentage={remindersPercentage}
           />
 
-          {/* Tarjetas de Métricas Rápidas */}
           <View style={styles.metricsRow}>
             <TouchableOpacity 
               style={[styles.metricItem, { backgroundColor: primaryColor + '10' }]}
@@ -208,47 +152,100 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Companies Summary Section */}
+        {/* 3. Tarjeta independiente: Seguimientos pendientes (Debajo de Salud de mi Red) */}
+        <TouchableOpacity 
+          style={[styles.pendingRemindersCard, { backgroundColor: cardColor, borderColor }]}
+          onPress={() => router.push('/contactos')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.bellIconCircle, { backgroundColor: accent1 + '15' }]}>
+            <Ionicons name="notifications" size={24} color={accent1} />
+          </View>
+          <View style={styles.pendingTextContainer}>
+            <Text style={[styles.pendingCountNumber, { color: primaryColor }]}>
+              {totalRemindersCount}
+            </Text>
+            <Text style={[styles.pendingCardTitle, { color: textColor }]}>
+              Seguimientos pendientes
+            </Text>
+            <Text style={[styles.pendingCardSubtext, { color: secondaryText }]}>
+              {totalRemindersCount === 1 
+                ? 'Tienes 1 seguimiento pendiente' 
+                : `Tienes ${totalRemindersCount} seguimientos pendientes`}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={secondaryText} />
+        </TouchableOpacity>
+
+        {/* 4. Últimos contactos agregados (Representación compacta, max 2) */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: primaryColor }]}>Empresas en mi Red</Text>
+            <Text style={[styles.sectionTitle, { color: primaryColor }]}>Últimos contactos agregados</Text>
+            <TouchableOpacity onPress={() => router.push('/contactos')}>
+              <Text style={[styles.seeAllText, { color: accent1 }]}>Ver todos</Text>
+            </TouchableOpacity>
+          </View>
+
+          {recentContacts.map((contact) => (
+            <TouchableOpacity
+              key={contact.id}
+              style={[styles.compactCard, { backgroundColor: cardColor, borderColor }]}
+              onPress={() => router.push(`/contacto/${contact.id}`)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.compactAvatar, { backgroundColor: primaryColor }]}>
+                <Text style={styles.compactAvatarText}>{contact.name.charAt(0)}</Text>
+              </View>
+              <Text style={[styles.compactTitle, { color: textColor }]} numberOfLines={1}>
+                {contact.name}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={secondaryText} />
+            </TouchableOpacity>
+          ))}
+
+          {recentContacts.length === 0 && (
+            <View style={[styles.emptySectionCard, { backgroundColor: cardColor, borderColor }]}>
+              <Ionicons name="people-outline" size={28} color={secondaryText} style={{ marginBottom: 6 }} />
+              <Text style={[styles.emptySectionText, { color: secondaryText }]}>No hay contactos agregados recientemente.</Text>
+            </View>
+          )}
+        </View>
+
+        {/* 5. Últimas empresas agregadas (Representación compacta, max 2) */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: primaryColor }]}>Últimas empresas agregadas</Text>
             <TouchableOpacity onPress={() => router.push('/empresas')}>
               <Text style={[styles.seeAllText, { color: accent1 }]}>Ver todas</Text>
             </TouchableOpacity>
           </View>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.companiesScroll}>
-            {topCompanies.map((company) => (
-              <TouchableOpacity 
-                key={company.id} 
-                style={[styles.companyMiniCard, { backgroundColor: cardColor, borderColor }]}
-                onPress={() => router.push(`/empresa/${company.id}`)}
-              >
-                <View style={[styles.companyIconCircle, { backgroundColor: primaryColor + '10' }]}>
-                  <Ionicons name="business" size={20} color={primaryColor} />
-                </View>
-                <Text style={[styles.companyMiniTitle, { color: textColor }]} numberOfLines={1}>
-                  {company.name}
-                </Text>
-                <View style={[styles.companyBadge, { backgroundColor: primaryColor + '15' }]}>
-                  <Text style={[styles.companyBadgeText, { color: primaryColor }]}>
-                    {company.contactCount} {company.contactCount === 1 ? 'persona' : 'personas'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-            
-            {topCompanies.length === 0 && (
-              <View style={[styles.emptyCompanyBox, { borderColor }]}>
-                <Text style={{ color: secondaryText, fontSize: 13 }}>
-                  Vincula contactos a empresas para ver el resumen aquí.
-                </Text>
+
+          {recentCompanies.map((company) => (
+            <TouchableOpacity 
+              key={company.id} 
+              style={[styles.compactCard, { backgroundColor: cardColor, borderColor }]}
+              onPress={() => router.push(`/empresa/${company.id}`)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.compactIconCircle, { backgroundColor: primaryColor + '12' }]}>
+                <Ionicons name="business" size={18} color={primaryColor} />
               </View>
-            )}
-          </ScrollView>
+              <Text style={[styles.compactTitle, { color: textColor }]} numberOfLines={1}>
+                {company.name}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={secondaryText} />
+            </TouchableOpacity>
+          ))}
+
+          {recentCompanies.length === 0 && (
+            <View style={[styles.emptySectionCard, { backgroundColor: cardColor, borderColor }]}>
+              <Ionicons name="business-outline" size={28} color={secondaryText} style={{ marginBottom: 6 }} />
+              <Text style={[styles.emptySectionText, { color: secondaryText }]}>No hay empresas agregadas recientemente.</Text>
+            </View>
+          )}
         </View>
 
-        {/* Reminders Section */}
+        {/* 6. Próximos recordatorios */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: primaryColor }]}>Próximos Recordatorios</Text>
@@ -295,21 +292,6 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
-
-        {/* Seccion de Actividad Reciente */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: primaryColor }]}>Actividad Reciente</Text>
-            <TouchableOpacity onPress={() => router.push('/contactos')}>
-              <Text style={[styles.seeAllText, { color: accent1 }]}>Ver todo</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <RecentActivityFeed 
-            activities={recentActivities} 
-            onPressItem={handlePressActivity} 
-          />
-        </View>
       </ScrollView>
     </View>
   );
@@ -321,7 +303,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 80,
   },
   userHeader: {
     flexDirection: 'row',
@@ -356,7 +338,7 @@ const styles = StyleSheet.create({
   statsCard: {
     borderRadius: 16,
     padding: 16,
-    marginBottom: 24,
+    marginBottom: 16,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -369,24 +351,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 12,
   },
-  donutPlaceholder: {
-    height: 120,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  donutPlaceholderText: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 6,
-  },
   metricsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 8,
+    marginTop: 12,
   },
   metricItem: {
     flex: 1,
@@ -404,35 +373,43 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
   },
-  quickActionsContainer: {
+  pendingRemindersCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  quickActionBox: {
-    flex: 1,
+    alignItems: 'center',
     borderRadius: 16,
     padding: 16,
-    alignItems: 'center',
-    marginHorizontal: 4,
+    marginBottom: 24,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
-    borderWidth: 1,
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  bellIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginRight: 14,
   },
-  quickActionText: {
-    fontSize: 13,
-    fontWeight: '600',
+  pendingTextContainer: {
+    flex: 1,
+  },
+  pendingCountNumber: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  pendingCardTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  pendingCardSubtext: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   section: {
     marginBottom: 24,
@@ -441,7 +418,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
@@ -450,6 +427,57 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  compactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  compactAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  compactAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  compactIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  compactTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  emptySectionCard: {
+    padding: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  emptySectionText: {
+    fontSize: 13,
+    textAlign: 'center',
   },
   reminderCard: {
     flexDirection: 'row',
@@ -492,63 +520,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderStyle: 'dashed',
-  },
-  companiesScroll: {
-    paddingRight: 20,
-    gap: 12,
-  },
-  companyMiniCard: {
-    width: 140,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  companyIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  companyMiniTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  companyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  companyBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  emptyCompanyBox: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    width: 250,
-    justifyContent: 'center',
-  },
-  activityPlaceholderCard: {
-    padding: 24,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activityPlaceholderText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

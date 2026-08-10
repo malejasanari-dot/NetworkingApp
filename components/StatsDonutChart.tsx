@@ -6,7 +6,7 @@ import { useThemeColor } from '../hooks/use-theme-color';
 export interface StatsDonutChartProps {
   companyPercentage: number;
   favoritesPercentage: number;
-  remindersPercentage: number;
+  remindersPercentage?: number;
   companyColor?: string;
   favoritesColor?: string;
   remindersColor?: string;
@@ -15,10 +15,9 @@ export interface StatsDonutChartProps {
 export const StatsDonutChart: React.FC<StatsDonutChartProps> = React.memo(({
   companyPercentage,
   favoritesPercentage,
-  remindersPercentage,
+  remindersPercentage = 0,
   companyColor = '#4F185A',
   favoritesColor = '#E23369',
-  remindersColor = '#FF8F3B',
 }) => {
   const primaryColor = useThemeColor({}, 'primary');
   const secondaryText = useThemeColor({}, 'secondaryText');
@@ -27,7 +26,6 @@ export const StatsDonutChart: React.FC<StatsDonutChartProps> = React.memo(({
   // Clamp percentages between 0 and 100
   const compPct = Math.min(100, Math.max(0, companyPercentage));
   const favPct = Math.min(100, Math.max(0, favoritesPercentage));
-  const remPct = Math.min(100, Math.max(0, remindersPercentage));
 
   // Geometry for SVG Donut Ring
   const size = 100;
@@ -36,11 +34,10 @@ export const StatsDonutChart: React.FC<StatsDonutChartProps> = React.memo(({
   const center = size / 2; // 50
   const circumference = 2 * Math.PI * radius; // ~282.74
 
-  // Prepare active segments
+  // Prepare active segments (only Empresas & Favoritos)
   const rawSegments = [
     { id: 'empresas', value: compPct, color: companyColor },
     { id: 'favoritos', value: favPct, color: favoritesColor },
-    { id: 'seguimiento', value: remPct, color: remindersColor },
   ];
 
   const activeSegments = rawSegments.filter(s => s.value > 0);
@@ -111,15 +108,11 @@ export const StatsDonutChart: React.FC<StatsDonutChartProps> = React.memo(({
       <View style={styles.legendContainer}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: companyColor }]} />
-          <Text style={[styles.legendText, { color: secondaryText }]}>Empresas ({compPct}%)</Text>
+          <Text style={[styles.legendText, { color: secondaryText }]} numberOfLines={1}>Empresas ({compPct}%)</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: favoritesColor }]} />
-          <Text style={[styles.legendText, { color: secondaryText }]}>Favoritos ({favPct}%)</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: remindersColor }]} />
-          <Text style={[styles.legendText, { color: secondaryText }]}>Seguimiento ({remPct}%)</Text>
+          <Text style={[styles.legendText, { color: secondaryText }]} numberOfLines={1}>Favoritos ({favPct}%)</Text>
         </View>
       </View>
     </View>
