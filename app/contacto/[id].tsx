@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
@@ -69,6 +70,9 @@ export default function ContactDetailScreen() {
 
   const handleToggleFavorite = () => {
     if (contact) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       scale.value = withSequence(
         withTiming(1.3, { duration: 100 }),
         withSpring(1, { damping: 10, stiffness: 100 })

@@ -8,6 +8,7 @@ import { useThemeColor } from '../../hooks/use-theme-color';
 import { SmartFAB } from '../../components/SmartFAB';
 import { ReminderModal } from '../../components/ReminderModal';
 import { ThemeToggleButton } from '../../components/ThemeToggleButton';
+import { HapticTab } from '../../components/haptic-tab';
 import { useReminders } from '../../context/RemindersContext';
 import { useContacts } from '../../context/ContactsContext';
 
@@ -114,6 +115,7 @@ export default function TabLayout() {
         <View style={{ flex: 1 }}>
           <Tabs
             screenOptions={{
+              tabBarButton: HapticTab,
               tabBarActiveTintColor: activeColor,
               tabBarInactiveTintColor: inactiveColor,
               headerShown: true,

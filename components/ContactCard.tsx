@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -40,6 +41,9 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
 
   const handleToggleFavorite = () => {
     if (onToggleFavorite) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       // Trigger pop animation
       scale.value = withSequence(
         withTiming(1.3, { duration: 100 }),

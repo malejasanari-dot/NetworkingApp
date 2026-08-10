@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { StyleSheet, View, Text, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { StyleSheet, View, Text, FlatList, ActivityIndicator, RefreshControl, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useContacts } from '../../context/ContactsContext';
@@ -8,7 +9,7 @@ import { ContactCard } from '../../components/ContactCard';
 
 export default function FavoritosScreen() {
   const router = useRouter();
-  const { contacts, isLoading, updateContact } = useContacts();
+  const { contacts, isLoading, updateContact, refreshContacts } = useContacts();
   const [refreshing, setRefreshing] = useState(false);
   const favoriteContacts = useMemo(
     () => contacts.filter(contact => contact && contact.favorito),
@@ -22,12 +23,24 @@ export default function FavoritosScreen() {
   const accent2 = useThemeColor({}, 'accent2');
   const borderColor = useThemeColor({}, 'border');
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    requestAnimationFrame(() => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    try {
+      if (refreshContacts) {
+        await refreshContacts();
+      }
+    } catch (error) {
+      console.error('Error refreshing favorites:', error);
+    } finally {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       setRefreshing(false);
-    });
-  }, []);
+    }
+  }, [refreshContacts]);
 
   const handlePressContact = useCallback((id: string) => {
     router.push(`/contacto/${id}`);

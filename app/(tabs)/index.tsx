@@ -1,11 +1,12 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, RefreshControl, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useContacts } from '../../context/ContactsContext';
 import { useCompanies } from '../../context/CompaniesContext';
-import { useReminders } from '../../context/RemindersContext';
 import { useNotes } from '../../context/NotesContext';
+import { useReminders } from '../../context/RemindersContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { formatDate } from '../../utils/date';
 import { MOCK_PROFILE } from '../../constants/MockData';
@@ -16,8 +17,8 @@ import { ReminderModal } from '../../components/ReminderModal';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { contacts } = useContacts();
-  const { companies } = useCompanies();
+  const { contacts, refreshContacts } = useContacts();
+  const { companies, refreshCompanies } = useCompanies();
   const { notes } = useNotes();
   const { getUpcomingReminders, addReminder } = useReminders();
   const [isReminderModalVisible, setIsReminderModalVisible] = useState(false);
@@ -32,12 +33,23 @@ export default function HomeScreen() {
   const accent1 = useThemeColor({}, 'accent1');
   const accent2 = useThemeColor({}, 'accent2');
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    requestAnimationFrame(() => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    try {
+      if (refreshContacts) await refreshContacts();
+      if (refreshCompanies) await refreshCompanies();
+    } catch (error) {
+      console.error('Error refreshing dashboard:', error);
+    } finally {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       setRefreshing(false);
-    });
-  }, []);
+    }
+  }, [refreshContacts, refreshCompanies]);
 
   const upcomingReminders = useMemo(() => {
     return getUpcomingReminders(7);

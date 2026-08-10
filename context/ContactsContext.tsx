@@ -11,6 +11,7 @@ interface ContactsContextData {
   importContacts: (newContacts: Omit<Contact, 'id' | 'dateAdded'>[]) => Promise<{ imported: number, skipped: number }>;
   updateContact: (id: string, updatedData: Partial<Contact>) => Promise<void>;
   deleteContact: (id: string) => Promise<void>;
+  refreshContacts: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -154,14 +155,19 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [deleteNotesForContact, deleteRemindersForContact]);
 
+  const refreshContacts = useCallback(async () => {
+    await loadContacts();
+  }, []);
+
   const value = useMemo(() => ({
     contacts,
     addContact,
     importContacts,
     updateContact,
     deleteContact,
+    refreshContacts,
     isLoading,
-  }), [contacts, addContact, importContacts, updateContact, deleteContact, isLoading]);
+  }), [contacts, addContact, importContacts, updateContact, deleteContact, refreshContacts, isLoading]);
 
   return (
     <ContactsContext.Provider value={value}>

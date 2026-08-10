@@ -1,5 +1,6 @@
 import React, { useMemo, useLayoutEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, Platform, RefreshControl } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import { useCompanies, Company } from '../../context/CompaniesContext';
@@ -10,7 +11,7 @@ import { ThemeToggleButton } from '../../components/ThemeToggleButton';
 export default function EmpresasScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const { companies, syncCompanies, isLoading: loadingCompanies } = useCompanies();
+  const { companies, syncCompanies, refreshCompanies, isLoading: loadingCompanies } = useCompanies();
   const { contacts, updateContact, isLoading: loadingContacts } = useContacts();
   const [isSyncing, setIsSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -22,12 +23,25 @@ export default function EmpresasScreen() {
   const accent1 = useThemeColor({}, 'accent1');
   const borderColor = useThemeColor({}, 'border');
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    requestAnimationFrame(() => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    try {
+      if (refreshCompanies) {
+        await refreshCompanies();
+      }
+      await syncCompanies(contacts);
+    } catch (error) {
+      console.error('Error refreshing companies:', error);
+    } finally {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       setRefreshing(false);
-    });
-  }, []);
+    }
+  }, [refreshCompanies, syncCompanies, contacts]);
 
   const handleSync = async () => {
     setIsSyncing(true);

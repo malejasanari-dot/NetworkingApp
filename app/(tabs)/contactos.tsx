@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useLayoutEffect, useCallback } from 'react';
 import { StyleSheet, View, Text, FlatList, ScrollView, TouchableOpacity, ActivityIndicator, Platform, RefreshControl } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { ControlledInput } from '../../components/ui/controlled-input';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
@@ -13,7 +14,7 @@ import { ThemeToggleButton } from '../../components/ThemeToggleButton';
 export default function ContactosScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const { contacts, isLoading, updateContact } = useContacts();
+  const { contacts, isLoading, updateContact, refreshContacts } = useContacts();
   const { companies } = useCompanies();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTags, setActiveTags] = useState<string[]>([]);
@@ -28,12 +29,24 @@ export default function ContactosScreen() {
   const accent1 = useThemeColor({}, 'accent1');
   const borderColor = useThemeColor({}, 'border');
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    requestAnimationFrame(() => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    try {
+      if (refreshContacts) {
+        await refreshContacts();
+      }
+    } catch (error) {
+      console.error('Error refreshing contacts:', error);
+    } finally {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       setRefreshing(false);
-    });
-  }, []);
+    }
+  }, [refreshContacts]);
 
   useLayoutEffect(() => {
     navigation.setOptions({

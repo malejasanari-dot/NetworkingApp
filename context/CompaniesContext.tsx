@@ -19,6 +19,7 @@ interface CompaniesContextData {
   deleteCompany: (id: string) => Promise<void>;
   syncCompanies: (contacts: Contact[]) => Promise<{ created: number }>;
   syncContactCompanies: (contactId: string, empresaActual: string | undefined, empresasAnteriores: string[] | undefined) => Promise<void>;
+  refreshCompanies: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -188,8 +189,12 @@ export const CompaniesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  const refreshCompanies = async () => {
+    await loadCompanies();
+  };
+
   return (
-    <CompaniesContext.Provider value={{ companies, addCompany, updateCompany, deleteCompany, syncCompanies, syncContactCompanies, isLoading }}>
+    <CompaniesContext.Provider value={{ companies, addCompany, updateCompany, deleteCompany, syncCompanies, syncContactCompanies, refreshCompanies, isLoading }}>
       {children}
     </CompaniesContext.Provider>
   );
