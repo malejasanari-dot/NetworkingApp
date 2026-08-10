@@ -45,12 +45,32 @@ function RootLayoutContent() {
     },
   };
 
+  const activeThemeKey = colorScheme === 'dark' ? 'dark' : 'light';
+  const themeColors = Colors[activeThemeKey];
+
   return (
     <NavigationProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: themeColors.background,
+          },
+          headerTintColor: themeColors.primary,
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            color: themeColors.primary,
+          },
+          headerBackTitle: 'Atrás',
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        <Stack.Screen name="contacto/[id]" options={{ presentation: 'modal', title: 'Detalles', headerTitleStyle: { color: Colors[colorScheme].primary } }} />
+        <Stack.Screen name="contacto/[id]" options={{ title: 'Detalle de Contacto' }} />
+        <Stack.Screen name="contacto/editar/[id]" options={{ title: 'Editar Contacto' }} />
+        <Stack.Screen name="contacto/importar" options={{ title: 'Importar Contactos' }} />
+        <Stack.Screen name="empresa/agregar" options={{ title: 'Nueva Empresa' }} />
+        <Stack.Screen name="empresa/editar/[id]" options={{ title: 'Editar Empresa' }} />
+        <Stack.Screen name="empresa/[id]" options={{ title: 'Empresa' }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </NavigationProvider>

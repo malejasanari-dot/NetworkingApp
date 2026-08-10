@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
   useSharedValue, 
@@ -26,6 +26,7 @@ export default function ContactDetailScreen() {
   const { getRemindersForContact, addReminder, updateReminder, deleteReminder } = useReminders();
   const { getNotesForContact, addNote, updateNote, deleteNote } = useNotes();
   const router = useRouter();
+  const navigation = useNavigation();
 
   const [isModalVisible, setIsModalVisible] = React.useState(false);
   const [editingReminder, setEditingReminder] = React.useState<Recordatorio | undefined>(undefined);
@@ -43,6 +44,17 @@ export default function ContactDetailScreen() {
   const accent2 = useThemeColor({}, 'accent2');
   const borderColor = useThemeColor({}, 'border');
 
+  const contact = useMemo(() => contacts.find(c => c.id === id), [contacts, id]);
+
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      title: contact ? contact.name : 'Detalle de Contacto',
+      headerStyle: { backgroundColor },
+      headerTintColor: primaryColor,
+      headerTitleStyle: { color: primaryColor, fontWeight: 'bold' },
+    });
+  }, [navigation, contact, backgroundColor, primaryColor]);
+
   const scale = useSharedValue(1);
 
   const contactReminders = useMemo(
@@ -59,8 +71,6 @@ export default function ContactDetailScreen() {
       transform: [{ scale: scale.value }],
     };
   });
-
-  const contact = contacts.find(c => c.id === id);
 
   const empresaActualObj = contact?.empresaActual ? companies.find(c => c.id === contact.empresaActual) : null;
   const empresasAnterioresStr = (contact?.empresasAnteriores || [])

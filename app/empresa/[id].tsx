@@ -1,25 +1,44 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../context/CompaniesContext';
 import { useContacts } from '../../context/ContactsContext';
 import { ContactCard } from '../../components/ContactCard';
+import { useThemeColor } from '../../hooks/use-theme-color';
 
 export default function EmpresaDetailScreen() {
   const { id } = useLocalSearchParams();
   const { companies, deleteCompany } = useCompanies();
   const { contacts, updateContact } = useContacts();
   const router = useRouter();
+  const navigation = useNavigation();
+
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardColor = useThemeColor({}, 'card');
+  const textColor = useThemeColor({}, 'text');
+  const secondaryText = useThemeColor({}, 'secondaryText');
+  const primaryColor = useThemeColor({}, 'primary');
+  const accent2 = useThemeColor({}, 'accent2');
+  const borderColor = useThemeColor({}, 'border');
 
   const company = companies.find(c => c.id === id);
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: company ? company.name : 'Empresa',
+      headerStyle: { backgroundColor },
+      headerTintColor: primaryColor,
+      headerTitleStyle: { color: primaryColor, fontWeight: 'bold' },
+    });
+  }, [navigation, company, backgroundColor, primaryColor]);
+
   if (!company) {
     return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle-outline" size={64} color="#666" />
-        <Text style={styles.errorText}>Empresa no encontrada.</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+      <View style={[styles.errorContainer, { backgroundColor }]}>
+        <Ionicons name="alert-circle-outline" size={64} color={secondaryText} />
+        <Text style={[styles.errorText, { color: secondaryText }]}>Empresa no encontrada.</Text>
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: primaryColor }]} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>Volver</Text>
         </TouchableOpacity>
       </View>
@@ -66,24 +85,24 @@ export default function EmpresaDetailScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor }]} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.editButton} 
+          style={[styles.editButton, { backgroundColor: primaryColor + '15' }]} 
           onPress={() => router.push(`/empresa/editar/${company.id}`)}
         >
-          <Ionicons name="pencil" size={20} color="#4F185A" />
+          <Ionicons name="pencil" size={20} color={primaryColor} />
         </TouchableOpacity>
         
-        <View style={styles.iconContainer}>
-          <Ionicons name="business" size={40} color="#4F185A" />
+        <View style={[styles.iconContainer, { backgroundColor: primaryColor + '15', borderColor: primaryColor }]}>
+          <Ionicons name="business" size={40} color={primaryColor} />
         </View>
-        <Text style={styles.name}>{company.name}</Text>
-        <Text style={styles.sector}>{company.sector || 'Sector no especificado'}</Text>
+        <Text style={[styles.name, { color: primaryColor }]}>{company.name}</Text>
+        <Text style={[styles.sector, { color: secondaryText }]}>{company.sector || 'Sector no especificado'}</Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Contactos ({associatedContactsCount})</Text>
+        <Text style={[styles.sectionTitle, { color: primaryColor }]}>Contactos ({associatedContactsCount})</Text>
         {associatedContacts.length > 0 ? (
           associatedContacts.map(contact => (
             <ContactCard 
@@ -93,22 +112,22 @@ export default function EmpresaDetailScreen() {
             />
           ))
         ) : (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No hay contactos vinculados a esta empresa.</Text>
+          <View style={[styles.emptyCard, { backgroundColor: cardColor, borderColor }]}>
+            <Text style={[styles.emptyText, { color: secondaryText }]}>No hay contactos vinculados a esta empresa.</Text>
           </View>
         )}
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notas</Text>
-        <View style={styles.notesBox}>
-          <Text style={styles.notesText}>
+        <Text style={[styles.sectionTitle, { color: primaryColor }]}>Notas</Text>
+        <View style={[styles.notesBox, { backgroundColor: cardColor, borderColor }]}>
+          <Text style={[styles.notesText, { color: textColor }]}>
             {company.notes || 'No hay notas adicionales para esta empresa.'}
           </Text>
         </View>
       </View>
 
-      <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+      <TouchableOpacity style={[styles.deleteButton, { backgroundColor: accent2 }]} onPress={handleDelete}>
         <Ionicons name="trash-outline" size={20} color="#FFF" />
         <Text style={styles.deleteButtonText}>Eliminar Empresa</Text>
       </TouchableOpacity>
@@ -119,7 +138,6 @@ export default function EmpresaDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   content: {
     padding: 24,
@@ -132,12 +150,10 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 18,
-    color: '#666',
     marginTop: 16,
     marginBottom: 24,
   },
   backButton: {
-    backgroundColor: '#4F185A',
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 12,
@@ -157,7 +173,6 @@ const styles = StyleSheet.create({
     top: 0,
     right: 0,
     padding: 10,
-    backgroundColor: '#F3EAF4',
     borderRadius: 24,
     zIndex: 10,
   },
@@ -165,35 +180,28 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#F3EAF4',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
     borderWidth: 2,
-    borderColor: '#4F185A',
   },
   name: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#4F185A',
     marginBottom: 4,
     textAlign: 'center',
   },
   sector: {
     fontSize: 18,
-    color: '#8E8E93',
     textAlign: 'center',
   },
   emptyCard: {
     padding: 16,
-    backgroundColor: '#FAFAFA',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
     alignItems: 'center',
   },
   emptyText: {
-    color: '#666',
     fontStyle: 'italic',
   },
   section: {
@@ -202,23 +210,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#4F185A',
     marginBottom: 12,
   },
   notesBox: {
-    backgroundColor: '#FAFAFA',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
   },
   notesText: {
     fontSize: 16,
-    color: '#444',
     lineHeight: 24,
   },
   deleteButton: {
-    backgroundColor: '#E23369',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

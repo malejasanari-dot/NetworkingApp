@@ -4,7 +4,7 @@ import { ControlledInput } from '../../components/ui/controlled-input';
 import { CompanySelector } from '../../components/CompanySelector';
 import { useCompanies } from '../../context/CompaniesContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { useContacts } from '../../context/ContactsContext';
 import { useNotes } from '../../context/NotesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
@@ -12,6 +12,7 @@ import { parseTags } from '../../utils/tags';
 
 export default function AgregarScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { addContact } = useContacts();
   const { addNote } = useNotes();
   const { companies, syncContactCompanies } = useCompanies();
@@ -31,6 +32,15 @@ export default function AgregarScreen() {
   const primaryColor = useThemeColor({}, 'primary');
   const accent2 = useThemeColor({}, 'accent2');
   const borderColor = useThemeColor({}, 'border');
+
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      title: 'Agregar Contacto',
+      headerStyle: { backgroundColor },
+      headerTintColor: primaryColor,
+      headerTitleStyle: { color: primaryColor, fontWeight: 'bold' },
+    });
+  }, [navigation, backgroundColor, primaryColor]);
 
   const handleSave = async () => {
     if (!name.trim()) {

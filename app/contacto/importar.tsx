@@ -2,12 +2,13 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import * as Contacts from 'expo-contacts';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { useContacts } from '../../context/ContactsContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 
 export default function ImportarContactosScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { importContacts } = useContacts();
   const [deviceContacts, setDeviceContacts] = useState<Contacts.Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,6 +23,15 @@ export default function ImportarContactosScreen() {
   const primaryColor = useThemeColor({}, 'primary');
   const accent1 = useThemeColor({}, 'accent1');
   const borderColor = useThemeColor({}, 'border');
+
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      title: 'Importar Contactos',
+      headerStyle: { backgroundColor },
+      headerTintColor: primaryColor,
+      headerTitleStyle: { color: primaryColor, fontWeight: 'bold' },
+    });
+  }, [navigation, backgroundColor, primaryColor]);
 
   useEffect(() => {
     (async () => {
