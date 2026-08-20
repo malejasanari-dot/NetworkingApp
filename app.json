@@ -8,7 +8,8 @@
     "scheme": "networkingapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.personalnetworkingapp"
     },
     "android": {
       "adaptiveIcon": {

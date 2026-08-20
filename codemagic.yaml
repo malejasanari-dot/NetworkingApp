@@ -1,9 +1,12 @@
 workflows:
-  ios-expo-simulator:
-    name: iOS Expo Build (Unsigned Simulator)
+  ios-expo-development:
+    name: iOS Expo Development Build (Signed IPA)
     max_build_duration: 120
     instance_type: mac_mini_m2
     environment:
+      ios_signing:
+        distribution_type: development
+        bundle_identifier: com.anonymous.personalnetworkingapp
       vars:
         EXPO_PUBLIC_SUPABASE_URL: $EXPO_PUBLIC_SUPABASE_URL
         EXPO_PUBLIC_SUPABASE_ANON_KEY: $EXPO_PUBLIC_SUPABASE_ANON_KEY
@@ -42,28 +45,29 @@ workflows:
           cd ios
           pod install
 
-      - name: Compile iOS App (Unsigned Simulator Build)
+      - name: Set up code signing
         script: |
-          echo "=== Compiling iOS App for Simulator ==="
-          cd ios
-          SCHEME=$(xcodebuild -list -json | node -e '
+          echo "=== Setting up Xcode Code Signing Profiles ==="
+          xcode-project use-profiles
+
+      - name: Build iOS IPA
+        script: |
+          echo "=== Compiling signed iOS IPA ==="
+          WORKSPACE=$(find ios -maxdepth 1 -name "*.xcworkspace" | head -n 1)
+          SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list -json | node -e '
             const fs = require("fs");
             const input = JSON.parse(fs.readFileSync(0, "utf-8"));
             const target = input.project.targets[0] || input.project.name;
             console.log(target);
           ')
-          echo "Extracted target scheme: $SCHEME"
+          echo "Detected workspace: $WORKSPACE"
+          echo "Detected scheme: $SCHEME"
 
-          xcodebuild \
-            -workspace "${SCHEME}.xcworkspace" \
-            -scheme "${SCHEME}" \
-            -sdk iphonesimulator \
-            -configuration Release \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            clean build
+          xcode-project build-ipa \
+            --workspace "$WORKSPACE" \
+            --scheme "$SCHEME"
 
     artifacts:
-      - ios/build/Build/Products/Release-iphonesimulator/*.app
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/Products/Release-iphonesimulator/*.app
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_*.log
+      - $HOME/Library/Logs/Codemagic/**/*.log
