@@ -5,8 +5,8 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       vars:
-        EXPO_PUBLIC_SUPABASE_URL: ${EXPO_PUBLIC_SUPABASE_URL}
-        EXPO_PUBLIC_SUPABASE_ANON_KEY: ${EXPO_PUBLIC_SUPABASE_ANON_KEY}
+        EXPO_PUBLIC_SUPABASE_URL: https://pabelilfcwyzyontsglo.supabase.co
+        EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_eto2SBwg1s-3bpS7iMJexw_boZuBMqQ
       node: 20
       xcode: latest
       cocoapods: default
@@ -14,7 +14,7 @@ workflows:
       events:
         - push
       branch_patterns:
-        - pattern: 'main'
+        - pattern: "main"
           include: true
           source: true
     scripts:
