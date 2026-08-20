@@ -1,0 +1,69 @@
+workflows:
+  ios-expo-simulator:
+    name: iOS Expo Build (Unsigned Simulator)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      vars:
+        EXPO_PUBLIC_SUPABASE_URL: ${EXPO_PUBLIC_SUPABASE_URL}
+        EXPO_PUBLIC_SUPABASE_ANON_KEY: ${EXPO_PUBLIC_SUPABASE_ANON_KEY}
+      node: 20
+      xcode: latest
+      cocoapods: default
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: true
+    scripts:
+      - name: Environment Diagnostics
+        script: |
+          echo "=== Environment Info ==="
+          node --version
+          npm --version
+          xcodebuild -version
+          pod --version
+
+      - name: Install npm dependencies
+        script: |
+          echo "=== Installing npm dependencies ==="
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+      - name: Expo Prebuild (Generate temporary iOS project)
+        script: |
+          echo "=== Running Expo Prebuild for iOS ==="
+          npx expo prebuild --platform ios --clean
+
+      - name: Install CocoaPods dependencies
+        script: |
+          echo "=== Installing CocoaPods ==="
+          cd ios
+          pod install
+
+      - name: Compile iOS App (Unsigned Simulator Build)
+        script: |
+          echo "=== Compiling iOS App for Simulator ==="
+          cd ios
+          SCHEME=$(xcodebuild -list -json | node -e '
+            const fs = require("fs");
+            const input = JSON.parse(fs.readFileSync(0, "utf-8"));
+            const target = input.project.targets[0] || input.project.name;
+            console.log(target);
+          ')
+          echo "Extracted target scheme: $SCHEME"
+
+          xcodebuild \
+            -workspace "${SCHEME}.xcworkspace" \
+            -scheme "${SCHEME}" \
+            -sdk iphonesimulator \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            clean build
+
+    artifacts:
+      - ios/build/Build/Products/Release-iphonesimulator/*.app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/Products/Release-iphonesimulator/*.app
