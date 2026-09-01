@@ -1,13 +1,20 @@
-import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSequence,
+  withSpring,
+  withTiming 
+} from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
 import { useThemeColor } from '../hooks/use-theme-color';
 
 /**
  * ThemeToggleButton — Control global de alternancia de tema (Claro/Oscuro).
- * Consume exclusivamente ThemeContext. Diseñado para integrarse en headerRight
- * del Tab Layout compartido de la aplicación.
+ * Con microinteracción de rotación/escala y feedback háptico.
  */
 export const ThemeToggleButton: React.FC = () => {
   const { isDark, setTheme } = useTheme();
@@ -15,9 +22,32 @@ export const ThemeToggleButton: React.FC = () => {
   const borderColor = useThemeColor({}, 'border');
   const primaryColor = useThemeColor({}, 'primary');
 
+  const rotation = useSharedValue(0);
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    rotation.value = withTiming(isDark ? 180 : 0, { duration: 300 });
+    scale.value = withSequence(
+      withTiming(1.2, { duration: 100 }),
+      withSpring(1, { damping: 10, stiffness: 120 })
+    );
+  }, [isDark, rotation, scale]);
+
   const handlePress = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     setTheme(isDark ? 'light' : 'dark');
   };
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { scale: scale.value },
+        { rotate: `${rotation.value}deg` },
+      ],
+    };
+  });
 
   return (
     <TouchableOpacity
@@ -27,11 +57,13 @@ export const ThemeToggleButton: React.FC = () => {
       accessibilityLabel={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
       accessibilityRole="button"
     >
-      <Ionicons
-        name={isDark ? 'sunny' : 'moon'}
-        size={18}
-        color={isDark ? '#FFB800' : primaryColor}
-      />
+      <Animated.View style={animatedStyle}>
+        <Ionicons
+          name={isDark ? 'sunny' : 'moon'}
+          size={18}
+          color={isDark ? '#FFB800' : primaryColor}
+        />
+      </Animated.View>
     </TouchableOpacity>
   );
 };

@@ -3,6 +3,13 @@ import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Pla
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  withTiming 
+} from 'react-native-reanimated';
 import { useThemeColor } from '../hooks/use-theme-color';
 
 export interface SmartFABProps {
@@ -28,31 +35,67 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
   const accent2 = useThemeColor({}, 'accent2');
 
   const bottomOffset = insets.bottom + (Platform.OS === 'ios' ? 70 : 64);
+  const animationProgress = useSharedValue(0);
 
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (isOpen) {
+      animationProgress.value = withSpring(1, { damping: 14, stiffness: 120 });
+    } else {
+      animationProgress.value = withTiming(0, { duration: 180 });
+    }
+  }, [isOpen, animationProgress]);
+
   const toggleMenu = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     setIsOpen(prev => !prev);
   };
 
   const handleAction = (action: () => void) => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     setIsOpen(false);
     action();
   };
+
+  const backdropAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: animationProgress.value,
+  }));
+
+  const menuAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: animationProgress.value,
+      transform: [
+        { translateY: (1 - animationProgress.value) * 15 },
+        { scale: animationProgress.value }
+      ],
+    };
+  });
+
+  const fabIconAnimatedStyle = useAnimatedStyle(() => {
+    const rotation = animationProgress.value * 45; // 0deg -> 45deg
+    return {
+      transform: [{ rotate: `${rotation}deg` }],
+    };
+  });
 
   return (
     <>
       {isOpen && (
         <TouchableWithoutFeedback onPress={() => setIsOpen(false)}>
-          <View style={styles.backdrop} />
+          <Animated.View style={[styles.backdrop, backdropAnimatedStyle]} />
         </TouchableWithoutFeedback>
       )}
 
       <View style={[styles.container, { bottom: bottomOffset }]} pointerEvents="box-none">
         {isOpen && (
-          <View style={styles.menuContainer}>
+          <Animated.View style={[styles.menuContainer, menuAnimatedStyle]}>
             <TouchableOpacity
               style={[styles.menuItem, { backgroundColor: cardColor, borderColor }]}
               onPress={() => handleAction(onAddContact)}
@@ -85,7 +128,7 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
                 <Ionicons name="notifications-outline" size={20} color={accent2} />
               </View>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         )}
 
         <TouchableOpacity
@@ -93,11 +136,9 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
           onPress={toggleMenu}
           activeOpacity={0.85}
         >
-          <Ionicons 
-            name={isOpen ? "close" : "add"} 
-            size={28} 
-            color="#FFFFFF" 
-          />
+          <Animated.View style={fabIconAnimatedStyle}>
+            <Ionicons name="add" size={28} color="#FFFFFF" />
+          </Animated.View>
         </TouchableOpacity>
       </View>
     </>

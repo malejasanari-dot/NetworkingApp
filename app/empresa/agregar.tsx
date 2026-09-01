@@ -6,9 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../context/CompaniesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 
+import { useToast } from '../../context/ToastContext';
+
 export default function AgregarEmpresaScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const toast = useToast();
   const { addCompany } = useCompanies();
   
   const [name, setName] = useState('');
@@ -33,24 +36,80 @@ export default function AgregarEmpresaScreen() {
     });
   }, [navigation, backgroundColor, primaryColor]);
 
+  const isSavingRef = React.useRef(false);
+
+  const hasUnsavedChanges = Boolean(name.trim() || sector.trim() || notes.trim());
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!hasUnsavedChanges || isSavingRef.current) {
+        return;
+      }
+      e.preventDefault();
+      Alert.alert(
+        "¿Deseas salir sin guardar los cambios?",
+        "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
+        [
+          { text: "Seguir editando", style: "cancel" },
+          {
+            text: "Salir sin guardar",
+            style: "destructive",
+            onPress: () => {
+              isSavingRef.current = true;
+              navigation.dispatch(e.data.action);
+            },
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, hasUnsavedChanges]);
+
+  const handleCancel = () => {
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        "¿Deseas salir sin guardar los cambios?",
+        "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
+        [
+          { text: "Seguir editando", style: "cancel" },
+          { 
+            text: "Salir sin guardar", 
+            style: "destructive", 
+            onPress: () => {
+              isSavingRef.current = true;
+              router.back();
+            } 
+          }
+        ]
+      );
+    } else {
+      router.back();
+    }
+  };
+
   const handleSave = async () => {
+    if (isSaving) return;
     if (!name.trim()) {
-      Alert.alert('Error', 'El nombre de la empresa es obligatorio.');
+      toast.error('El nombre de la empresa es obligatorio.');
       return;
     }
 
     setIsSaving(true);
+    isSavingRef.current = true;
     try {
       await addCompany({
         name: name.trim(),
         sector: sector.trim(),
         notes: notes.trim(),
       });
+      toast.success('Empresa creada correctamente');
       router.back();
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'No se pudo guardar la empresa.');
+      toast.error(error?.message || 'No se pudo guardar la empresa.');
     } finally {
       setIsSaving(false);
+      isSavingRef.current = false;
     }
   };
 
@@ -129,6 +188,14 @@ export default function AgregarEmpresaScreen() {
               <Text style={styles.saveButtonText}>Guardar Empresa</Text>
             </>
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.cancelButton, { borderColor }]} 
+          onPress={handleCancel}
+          disabled={isSaving}
+        >
+          <Text style={[styles.cancelButtonText, { color: secondaryText }]}>Cancelar</Text>
         </TouchableOpacity>
       </View>
       </ScrollView>
@@ -212,5 +279,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 10,
+  },
+  cancelButton: {
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

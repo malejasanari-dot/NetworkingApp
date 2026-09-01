@@ -4,6 +4,8 @@ import { View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { SmartFAB } from '../../components/SmartFAB';
 import { ReminderModal } from '../../components/ReminderModal';
@@ -37,6 +39,7 @@ const getCurrentTabIndex = (path: string): number => {
 export default function TabLayout() {
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
   const { addReminder } = useReminders();
   const { contacts } = useContacts();
   const [isReminderModalVisible, setIsReminderModalVisible] = useState(false);
@@ -76,9 +79,15 @@ export default function TabLayout() {
     if (currentIndex === -1) return;
 
     if (direction === 'left' && currentIndex < TAB_ROUTES.length - 1) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       const nextRoute = TAB_ROUTES[currentIndex + 1];
       router.replace(nextRoute as any);
     } else if (direction === 'right' && currentIndex > 0) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       const prevRoute = TAB_ROUTES[currentIndex - 1];
       router.replace(prevRoute as any);
     }
@@ -88,8 +97,12 @@ export default function TabLayout() {
   const nativeGesture = useMemo(() => Gesture.Native(), []);
 
   const panGesture = useMemo(() => {
+    // Delimitar el área activa del gesto excluyendo completamente la zona física del Tab Bar inferior
+    const bottomCutoff = -(55 + (insets.bottom || 0));
+
     return Gesture.Pan()
       .enabled(isMainScreen)
+      .hitSlop({ bottom: bottomCutoff })
       .activeOffsetX([-35, 35])
       .failOffsetY([-15, 15])
       .simultaneousWithExternalGesture(nativeGesture)
@@ -107,7 +120,7 @@ export default function TabLayout() {
           }
         }
       });
-  }, [isMainScreen, handleTabSwipe, nativeGesture]);
+  }, [isMainScreen, handleTabSwipe, nativeGesture, insets.bottom]);
 
   return (
     <View style={{ flex: 1 }}>

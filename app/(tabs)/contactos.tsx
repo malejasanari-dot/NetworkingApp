@@ -5,20 +5,39 @@ import { ControlledInput } from '../../components/ui/controlled-input';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import { useContacts } from '../../context/ContactsContext';
+import { useCompanies } from '../../context/CompaniesContext';
+import { useReminders } from '../../context/RemindersContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { ContactCard } from '../../components/ContactCard';
 import { CompanyFilterDropdown } from '../../components/CompanyFilterDropdown';
-import { useCompanies } from '../../context/CompaniesContext';
 import { ThemeToggleButton } from '../../components/ThemeToggleButton';
+import { CONTACT_CATEGORIES, ContactCategory } from '../../constants/categories';
+import {
+  AdvancedFilterModal,
+  FavoritesFilterType,
+  RemindersFilterType,
+  CompanyRelationFilterType,
+} from '../../components/AdvancedFilterModal';
 
 export default function ContactosScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { contacts, isLoading, updateContact, refreshContacts } = useContacts();
   const { companies } = useCompanies();
+  const { reminders } = useReminders();
+
+  // Primary Search & Category State
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [activeCategory, setActiveCategory] = useState<ContactCategory | null>(null);
+
+  // Advanced Filters State
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [activeCompanyFilter, setActiveCompanyFilter] = useState('ALL');
+  const [favoritesFilter, setFavoritesFilter] = useState<FavoritesFilterType>('all');
+  const [remindersFilter, setRemindersFilter] = useState<RemindersFilterType>('all');
+  const [companyRelationFilter, setCompanyRelationFilter] = useState<CompanyRelationFilterType>('all');
+  const [modalVisible, setModalVisible] = useState(false);
+
   const [refreshing, setRefreshing] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
@@ -67,56 +86,140 @@ export default function ContactosScreen() {
     });
   }, [navigation, primaryColor, router]);
 
-  const availableTags = useMemo(() => {
-    if (!contacts) return ['Todos'];
-    const tagsSet = new Set<string>();
-    contacts.forEach(contact => {
-      if (contact.tags) {
-        contact.tags.forEach(tag => tagsSet.add(tag));
-      }
-    });
-    return ['Todos', ...Array.from(tagsSet).sort()];
-  }, [contacts]);
-
-  const toggleTag = (tag: string) => {
-    if (tag === 'Todos') {
-      setActiveTags([]);
-      return;
-    }
-    
-    setActiveTags(prev => {
-      if (prev.includes(tag)) {
-        return prev.filter(t => t !== tag);
-      } else {
-        return [...prev, tag];
-      }
-    });
+  const handleSelectCategory = (cat: ContactCategory) => {
+    setActiveCategory(prev => (prev === cat ? null : cat));
   };
 
+  // Dynamic tags extraction from user's contacts
+  const availableTags = useMemo(() => {
+    if (!contacts) return [];
+    const set = new Set<string>();
+    contacts.forEach(c => {
+      if (Array.isArray(c.tags)) {
+        c.tags.forEach(t => {
+          if (typeof t === 'string' && t.trim()) {
+            set.add(t.trim());
+          }
+        });
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [contacts]);
+
+  // Check if any advanced filter is currently active
+  const hasActiveAdvancedFilters = useMemo(() => {
+    return (
+      selectedTags.length > 0 ||
+      activeCompanyFilter !== 'ALL' ||
+      favoritesFilter !== 'all' ||
+      remindersFilter !== 'all' ||
+      companyRelationFilter !== 'all'
+    );
+  }, [selectedTags, activeCompanyFilter, favoritesFilter, remindersFilter, companyRelationFilter]);
+
+  const handleResetAdvancedFilters = useCallback(() => {
+    setSelectedTags([]);
+    setActiveCompanyFilter('ALL');
+    setFavoritesFilter('all');
+    setRemindersFilter('all');
+    setCompanyRelationFilter('all');
+  }, []);
+
+  // Combined Multi-Criteria Filter Logic
   const filteredContacts = useMemo(() => {
     if (!contacts) return [];
     return contacts.filter((contact) => {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = 
-        contact.name.toLowerCase().includes(query) ||
-        (contact.company && contact.company.toLowerCase().includes(query)) ||
-        (contact.tags && contact.tags.some(t => t.toLowerCase().includes(query)));
-      
-      const matchesTag = activeTags.length === 0 || 
-        (contact.tags && activeTags.some(tag => contact.tags.includes(tag)));
+      if (!contact) return false;
 
-      let matchesCompany = true;
+      // 1. Text Search Query
+      const query = searchQuery.trim().toLowerCase();
+      if (query) {
+        const nameMatch = contact.name ? contact.name.toLowerCase().includes(query) : false;
+        const companyMatch = contact.company ? contact.company.toLowerCase().includes(query) : false;
+        const empresaActualMatch = contact.empresaActual ? contact.empresaActual.toLowerCase().includes(query) : false;
+        const tagsMatch = Array.isArray(contact.tags) && contact.tags.some(t => typeof t === 'string' && t.toLowerCase().includes(query));
+
+        const anterioressMatch = Array.isArray(contact.empresasAnteriores) && contact.empresasAnteriores.some(empIdOrName => {
+          if (!empIdOrName) return false;
+          if (empIdOrName.toLowerCase().includes(query)) return true;
+          const resolvedComp = companies.find(c => c.id === empIdOrName);
+          return resolvedComp ? resolvedComp.name.toLowerCase().includes(query) : false;
+        });
+
+        let empresaActualResolvedMatch = false;
+        if (contact.empresaActual) {
+          const resolvedComp = companies.find(c => c.id === contact.empresaActual);
+          if (resolvedComp && resolvedComp.name.toLowerCase().includes(query)) {
+            empresaActualResolvedMatch = true;
+          }
+        }
+
+        const matchesSearch = nameMatch || companyMatch || empresaActualMatch || tagsMatch || anterioressMatch || empresaActualResolvedMatch;
+        if (!matchesSearch) return false;
+      }
+
+      // 2. Category Filter (Conocidos, Referidos, Gestionados)
+      if (activeCategory !== null) {
+        if (contact.categoria !== activeCategory) return false;
+      }
+
+      // 3. Selected Tags Filter (AND logic - contact must have ALL selected tags)
+      if (selectedTags.length > 0) {
+        if (!Array.isArray(contact.tags)) return false;
+        const hasAllTags = selectedTags.every(st =>
+          contact.tags.some(ct => typeof ct === 'string' && ct.trim().toLowerCase() === st.trim().toLowerCase())
+        );
+        if (!hasAllTags) return false;
+      }
+
+      // 4. Company Filter
       if (activeCompanyFilter === 'NONE') {
-        matchesCompany = !contact.empresaActual && (!contact.company || contact.company.trim() === '');
+        const hasCurrentComp = Boolean(contact.empresaActual || (contact.company && contact.company.trim() !== ''));
+        if (hasCurrentComp) return false;
       } else if (activeCompanyFilter !== 'ALL') {
         const companyNameResolved = companies.find(c => c.id === activeCompanyFilter)?.name;
-        matchesCompany = contact.empresaActual === activeCompanyFilter || 
-          (!!contact.company && !!companyNameResolved && contact.company.toLowerCase() === companyNameResolved.toLowerCase());
+        const matchesCompany = contact.empresaActual === activeCompanyFilter ||
+          (!!contact.company && !!companyNameResolved && contact.company.trim().toLowerCase() === companyNameResolved.trim().toLowerCase());
+        if (!matchesCompany) return false;
       }
-      
-      return matchesSearch && matchesTag && matchesCompany;
+
+      // 5. Favorites Filter
+      if (favoritesFilter === 'only_favorites') {
+        if (!contact.favorito) return false;
+      }
+
+      // 6. Reminders Filter
+      if (remindersFilter !== 'all') {
+        const hasReminder = Array.isArray(reminders) && reminders.some(r => r && r.contactoId === contact.id);
+        if (remindersFilter === 'with_reminders' && !hasReminder) return false;
+        if (remindersFilter === 'without_reminders' && hasReminder) return false;
+      }
+
+      // 7. Company Relation Filter
+      if (companyRelationFilter !== 'all') {
+        const hasRelation = Boolean(
+          (contact.empresaActual && contact.empresaActual.trim() !== '') ||
+          (contact.company && contact.company.trim() !== '') ||
+          (Array.isArray(contact.empresasAnteriores) && contact.empresasAnteriores.length > 0)
+        );
+        if (companyRelationFilter === 'with_company' && !hasRelation) return false;
+        if (companyRelationFilter === 'without_company' && hasRelation) return false;
+      }
+
+      return true;
     });
-  }, [contacts, searchQuery, activeTags, activeCompanyFilter, companies]);
+  }, [
+    contacts,
+    searchQuery,
+    activeCategory,
+    selectedTags,
+    activeCompanyFilter,
+    favoritesFilter,
+    remindersFilter,
+    companyRelationFilter,
+    companies,
+    reminders,
+  ]);
 
   const handlePressContact = useCallback((id: string) => {
     router.push(`/contacto/${id}`);
@@ -144,18 +247,37 @@ export default function ContactosScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
-      {/* Search Bar */}
+      {/* Search Bar & Filter Toggle Button */}
       <View style={[styles.searchContainer, { backgroundColor: cardColor, borderColor }]}>
-        <Ionicons name="search" size={20} color={primaryColor} style={styles.searchIcon} />
+        <Ionicons name="search" size={18} color={secondaryText} style={styles.searchIcon} />
         <ControlledInput 
           style={[styles.searchInput, { color: textColor }]}
-          placeholder="Buscar por nombre, empresa o etiqueta..."
+          placeholder="Buscar contacto, empresa o etiqueta..."
           placeholderTextColor={secondaryText}
           value={searchQuery}
           onChangeText={setSearchQuery}
           selectTextOnFocus={false}
         />
-        <Ionicons name="options-outline" size={24} color={accent1} />
+        
+        <TouchableOpacity
+          style={[
+            styles.filterIconButton,
+            { backgroundColor: cardColor, borderColor },
+            hasActiveAdvancedFilters && { backgroundColor: primaryColor + '15', borderColor: primaryColor },
+          ]}
+          onPress={() => setModalVisible(true)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="Filtros avanzados"
+        >
+          <Ionicons 
+            name="options-outline" 
+            size={20} 
+            color={hasActiveAdvancedFilters ? primaryColor : secondaryText} 
+          />
+          {hasActiveAdvancedFilters && (
+            <View style={[styles.activeFilterBadge, { backgroundColor: primaryColor }]} />
+          )}
+        </TouchableOpacity>
       </View>
 
       <CompanyFilterDropdown 
@@ -163,7 +285,7 @@ export default function ContactosScreen() {
         onChange={setActiveCompanyFilter}
       />
 
-      {/* Filter Tags */}
+      {/* Category Filter Chips (Conocidos, Referidos, Gestionados) */}
       <View style={styles.filtersContainer}>
         <ScrollView 
           horizontal 
@@ -171,24 +293,25 @@ export default function ContactosScreen() {
           contentContainerStyle={styles.filtersScroll}
           keyboardShouldPersistTaps="handled"
         >
-          {availableTags.map((tag, index) => {
-            const isActive = tag === 'Todos' ? activeTags.length === 0 : activeTags.includes(tag);
+          {CONTACT_CATEGORIES.map((cat) => {
+            const isActive = activeCategory === cat;
             return (
               <TouchableOpacity 
-                key={index} 
+                key={cat} 
                 style={[
                   styles.filterChip, 
                   { backgroundColor: cardColor, borderColor },
-                  isActive && { backgroundColor: accent1, borderColor: accent1 }
+                  isActive && { backgroundColor: primaryColor, borderColor: primaryColor }
                 ]}
-                onPress={() => toggleTag(tag)}
+                onPress={() => handleSelectCategory(cat)}
+                activeOpacity={0.8}
               >
                 <Text style={[
                   styles.filterChipText, 
-                  { color: primaryColor },
-                  isActive && { color: '#FFFFFF' }
+                  { color: secondaryText },
+                  isActive && { color: '#FFFFFF', fontWeight: 'bold' }
                 ]}>
-                  {tag}
+                  {cat}
                 </Text>
               </TouchableOpacity>
             );
@@ -217,14 +340,44 @@ export default function ContactosScreen() {
           />
         }
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', marginTop: 40 }}>
-            <Text style={{ color: secondaryText }}>
-              {searchQuery || activeTags.length > 0 || activeCompanyFilter !== 'ALL'
-                ? "No se encontraron contactos"
-                : "No tienes contactos guardados."}
+          <View style={[styles.emptyCard, { backgroundColor: cardColor, borderColor }]}>
+            <Ionicons 
+              name={searchQuery || activeCategory !== null || hasActiveAdvancedFilters ? "search-outline" : "people-outline"} 
+              size={32} 
+              color={secondaryText} 
+              style={{ marginBottom: 8 }} 
+            />
+            <Text style={[styles.emptyTitle, { color: primaryColor }]}>
+              {searchQuery || activeCategory !== null || hasActiveAdvancedFilters
+                ? "Sin resultados"
+                : "Sin contactos"}
+            </Text>
+            <Text style={[styles.emptySubtext, { color: secondaryText }]}>
+              {searchQuery || activeCategory !== null || hasActiveAdvancedFilters
+                ? "No encontramos contactos que coincidan con los filtros aplicados."
+                : "Agrega tu primer contacto para comenzar a organizar tu red."}
             </Text>
           </View>
         }
+      />
+
+      {/* Advanced Filters Modal */}
+      <AdvancedFilterModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        availableTags={availableTags}
+        companies={companies}
+        selectedTags={selectedTags}
+        setSelectedTags={setSelectedTags}
+        activeCompanyFilter={activeCompanyFilter}
+        setActiveCompanyFilter={setActiveCompanyFilter}
+        favoritesFilter={favoritesFilter}
+        setFavoritesFilter={setFavoritesFilter}
+        remindersFilter={remindersFilter}
+        setRemindersFilter={setRemindersFilter}
+        companyRelationFilter={companyRelationFilter}
+        setCompanyRelationFilter={setCompanyRelationFilter}
+        onResetFilters={handleResetAdvancedFilters}
       />
     </View>
   );
@@ -248,23 +401,43 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: 16,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
-    height: 48,
+    height: 44,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
+  },
+  filterIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    marginLeft: 4,
+  },
+  activeFilterBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   filtersContainer: {
     marginBottom: 8,
@@ -274,18 +447,37 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
     borderWidth: 1,
-    marginRight: 8,
   },
   filterChipText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   listContent: {
-    padding: 16,
-    paddingTop: 8,
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 80,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    borderRadius: 16,
+    marginTop: 32,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

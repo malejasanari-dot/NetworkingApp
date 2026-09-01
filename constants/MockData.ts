@@ -5,6 +5,7 @@ export interface Contact {
   empresaActual?: string;
   empresasAnteriores?: string[];
   tags: string[];
+  categoria?: 'Conocidos' | 'Referidos' | 'Gestionados';
   favorito: boolean;
   notes?: string;
   phone?: string;

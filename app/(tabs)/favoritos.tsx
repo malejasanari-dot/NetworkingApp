@@ -69,7 +69,7 @@ export default function FavoritosScreen() {
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <View style={[styles.header, { backgroundColor: cardColor, borderBottomColor: borderColor }]}>
-        <Ionicons name="star" size={28} color={accent2} style={styles.headerIcon} />
+        <Ionicons name="star" size={24} color={accent2} style={styles.headerIcon} />
         <Text style={[styles.title, { color: primaryColor }]}>Mis Favoritos</Text>
         <Text style={[styles.subtitle, { color: secondaryText }]}>Tus contactos más importantes</Text>
       </View>
@@ -88,8 +88,12 @@ export default function FavoritosScreen() {
           />
         }
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', marginTop: 40 }}>
-            <Text style={{ color: secondaryText }}>Aún no tienes contactos marcados como favoritos.</Text>
+          <View style={[styles.emptyCard, { backgroundColor: cardColor, borderColor }]}>
+            <Ionicons name="star-outline" size={32} color={secondaryText} style={{ marginBottom: 8 }} />
+            <Text style={[styles.emptyTitle, { color: primaryColor }]}>Sin favoritos</Text>
+            <Text style={[styles.emptySubtext, { color: secondaryText }]}>
+              Marca contactos con la estrella para mantenerlos accesibles en esta sección.
+            </Text>
           </View>
         }
       />
@@ -103,26 +107,43 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    padding: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
   },
   headerIcon: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 80,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    borderRadius: 16,
+    marginTop: 32,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  emptyTitle: {
+    fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 14,
-  },
-  listContent: {
-    padding: 16,
+  emptySubtext: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { ControlledInput } from '../../../components/ui/controlled-input';
 import { CompanySelector } from '../../../components/CompanySelector';
 import { useCompanies } from '../../../context/CompaniesContext';
@@ -7,10 +7,14 @@ import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useContacts } from '../../../context/ContactsContext';
 import { useThemeColor } from '../../../hooks/use-theme-color';
 import { parseTags, formatTags } from '../../../utils/tags';
+import { CONTACT_CATEGORIES, ContactCategory } from '../../../constants/categories';
+
+import { useToast } from '../../../context/ToastContext';
 
 export default function EditarScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const toast = useToast();
   const { id } = useLocalSearchParams();
   const { contacts, updateContact } = useContacts();
   const { companies, syncContactCompanies } = useCompanies();
@@ -23,6 +27,8 @@ export default function EditarScreen() {
   const [empresasAnteriores, setEmpresasAnteriores] = useState<string[]>([]);
   const [tagsInput, setTagsInput] = useState('');
   const [favorito, setFavorito] = useState(false);
+  const [categoria, setCategoria] = useState<ContactCategory | undefined>(undefined);
+  const [isSaving, setIsSaving] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -49,6 +55,7 @@ export default function EditarScreen() {
       setEmpresasAnteriores(contact.empresasAnteriores || []);
       setTagsInput(formatTags(contact.tags));
       setFavorito(contact.favorito || false);
+      setCategoria(contact.categoria || undefined);
     }
   }, [contact]);
 
@@ -63,30 +70,117 @@ export default function EditarScreen() {
     );
   }
 
+  const isSavingRef = React.useRef(false);
+
+  const initialValues = React.useMemo(() => {
+    if (!contact) return null;
+    return {
+      name: contact.name || '',
+      phone: contact.phone || '',
+      empresaActual: contact.empresaActual || '',
+      empresasAnteriores: contact.empresasAnteriores || [],
+      tagsInput: formatTags(contact.tags || []),
+      favorito: Boolean(contact.favorito),
+      categoria: contact.categoria || undefined,
+    };
+  }, [contact]);
+
+  const hasUnsavedChanges = React.useMemo(() => {
+    if (!initialValues) return false;
+    const sameName = name.trim() === initialValues.name.trim();
+    const samePhone = phone.trim() === initialValues.phone.trim();
+    const sameEmpresaActual = empresaActual === initialValues.empresaActual;
+    const sameEmpresasAnteriores = JSON.stringify(empresasAnteriores) === JSON.stringify(initialValues.empresasAnteriores);
+    const sameTags = tagsInput.trim() === initialValues.tagsInput.trim();
+    const sameFavorito = favorito === initialValues.favorito;
+    const sameCategoria = categoria === initialValues.categoria;
+
+    return !(sameName && samePhone && sameEmpresaActual && sameEmpresasAnteriores && sameTags && sameFavorito && sameCategoria);
+  }, [initialValues, name, phone, empresaActual, empresasAnteriores, tagsInput, favorito, categoria]);
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!hasUnsavedChanges || isSavingRef.current) {
+        return;
+      }
+      e.preventDefault();
+      Alert.alert(
+        "¿Deseas salir sin guardar los cambios?",
+        "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
+        [
+          { text: "Seguir editando", style: "cancel" },
+          {
+            text: "Salir sin guardar",
+            style: "destructive",
+            onPress: () => {
+              isSavingRef.current = true;
+              navigation.dispatch(e.data.action);
+            },
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, hasUnsavedChanges]);
+
+  const handleCancel = () => {
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        "¿Deseas salir sin guardar los cambios?",
+        "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
+        [
+          { text: "Seguir editando", style: "cancel" },
+          { 
+            text: "Salir sin guardar", 
+            style: "destructive", 
+            onPress: () => {
+              isSavingRef.current = true;
+              router.back();
+            } 
+          }
+        ]
+      );
+    } else {
+      router.back();
+    }
+  };
+
   const handleSave = async () => {
+    if (isSaving) return;
     if (!name.trim()) {
-      Alert.alert('Error', 'El nombre es obligatorio.');
+      toast.error('El nombre es obligatorio.');
       return;
     }
 
-    const tagsArray = parseTags(tagsInput);
+    setIsSaving(true);
+    isSavingRef.current = true;
+    try {
+      const tagsArray = parseTags(tagsInput);
 
-    const compName = empresaActual ? companies.find(c => c.id === empresaActual)?.name || '' : '';
+      const compName = empresaActual ? companies.find(c => c.id === empresaActual)?.name || '' : '';
 
-    await updateContact(id as string, {
-      name: name.trim(),
-      phone: phone.trim(),
-      company: compName,
-      empresaActual,
-      empresasAnteriores,
-      tags: tagsArray,
-      favorito,
-    });
+      await updateContact(id as string, {
+        name: name.trim(),
+        phone: phone.trim(),
+        company: compName,
+        empresaActual,
+        empresasAnteriores,
+        tags: tagsArray,
+        categoria,
+        favorito,
+      });
 
-    await syncContactCompanies(id as string, empresaActual, empresasAnteriores);
+      await syncContactCompanies(id as string, empresaActual, empresasAnteriores);
 
-    Alert.alert('¡Éxito!', 'Contacto actualizado correctamente.');
-    router.back();
+      toast.success('Contacto actualizado correctamente');
+      router.back();
+    } catch (error: any) {
+      toast.error(error?.message || 'No se pudo actualizar el contacto.');
+    } finally {
+      setIsSaving(false);
+      isSavingRef.current = false;
+    }
   };
 
   return (
@@ -158,6 +252,34 @@ export default function EditarScreen() {
           />
         </View>
 
+        <View style={styles.formGroup}>
+          <Text style={[styles.label, { color: primaryColor }]}>Categoría</Text>
+          <View style={styles.categoryRow}>
+            {CONTACT_CATEGORIES.map(cat => {
+              const isActive = categoria === cat;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.categoryChip,
+                    { backgroundColor: cardColor, borderColor },
+                    isActive && { backgroundColor: primaryColor, borderColor: primaryColor },
+                  ]}
+                  onPress={() => setCategoria(isActive ? undefined : cat)}
+                >
+                  <Text style={[
+                    styles.categoryChipText,
+                    { color: primaryColor },
+                    isActive && { color: '#FFFFFF' },
+                  ]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         <View style={[styles.switchGroup, { backgroundColor: cardColor, borderColor }]}>
           <View>
             <Text style={[styles.switchLabel, { color: primaryColor }]}>Marcar como Favorito</Text>
@@ -171,11 +293,20 @@ export default function EditarScreen() {
           />
         </View>
 
-        <TouchableOpacity style={[styles.saveButton, { backgroundColor: primaryColor }]} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+        <TouchableOpacity 
+          style={[styles.saveButton, { backgroundColor: primaryColor, opacity: isSaving ? 0.7 : 1 }]} 
+          onPress={handleSave}
+          disabled={isSaving}
+          activeOpacity={0.7}
+        >
+          {isSaving ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+          )}
         </TouchableOpacity>
         
-        <TouchableOpacity style={[styles.cancelButton, { borderColor }]} onPress={() => router.back()}>
+        <TouchableOpacity style={[styles.cancelButton, { borderColor }]} onPress={handleCancel} disabled={isSaving}>
           <Text style={[styles.cancelButtonText, { color: secondaryText }]}>Cancelar</Text>
         </TouchableOpacity>
 
@@ -281,5 +412,20 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: '#FFF',
     fontWeight: 'bold',
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  categoryChip: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  categoryChipText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

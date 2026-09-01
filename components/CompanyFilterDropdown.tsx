@@ -114,8 +114,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
+    height: 38,
+    borderRadius: 10,
     borderWidth: 1,
   },
   icon: {
@@ -123,8 +123,8 @@ const styles = StyleSheet.create({
   },
   dropdownText: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,

@@ -8,7 +8,8 @@ import Animated, {
   useAnimatedStyle, 
   withSpring, 
   withSequence,
-  withTiming 
+  withTiming,
+  FadeInDown
 } from 'react-native-reanimated';
 import { useContacts } from '../../context/ContactsContext';
 import { useCompanies } from '../../context/CompaniesContext';
@@ -18,6 +19,10 @@ import { useThemeColor } from '../../hooks/use-theme-color';
 import { ReminderModal } from '../../components/ReminderModal';
 import { Recordatorio, Nota } from '../../constants/MockData';
 import { formatDate } from '../../utils/date';
+import { CATEGORY_COLORS, CATEGORY_COLORS_DARK } from '../../constants/categories';
+import { useColorScheme } from '../../hooks/use-color-scheme';
+
+import { useToast } from '../../context/ToastContext';
 
 export default function ContactDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -27,6 +32,7 @@ export default function ContactDetailScreen() {
   const { getNotesForContact, addNote, updateNote, deleteNote } = useNotes();
   const router = useRouter();
   const navigation = useNavigation();
+  const toast = useToast();
 
   const [isModalVisible, setIsModalVisible] = React.useState(false);
   const [editingReminder, setEditingReminder] = React.useState<Recordatorio | undefined>(undefined);
@@ -43,6 +49,7 @@ export default function ContactDetailScreen() {
   const accent1 = useThemeColor({}, 'accent1');
   const accent2 = useThemeColor({}, 'accent2');
   const borderColor = useThemeColor({}, 'border');
+  const colorScheme = useColorScheme() ?? 'light';
 
   const contact = useMemo(() => contacts.find(c => c.id === id), [contacts, id]);
 
@@ -74,9 +81,9 @@ export default function ContactDetailScreen() {
 
   const empresaActualObj = contact?.empresaActual ? companies.find(c => c.id === contact.empresaActual) : null;
   const empresasAnterioresStr = (contact?.empresasAnteriores || [])
-    .map(companyId => companies.find(c => c.id === companyId)?.name)
+    .map(companyId => companies.find(c => c.id === companyId)?.name || companyId)
     .filter(Boolean)
-    .join(', ');
+    .join(' | ');
 
   const handleToggleFavorite = () => {
     if (contact) {
@@ -87,6 +94,11 @@ export default function ContactDetailScreen() {
         withTiming(1.3, { duration: 100 }),
         withSpring(1, { damping: 10, stiffness: 100 })
       );
+      if (!contact.favorito) {
+        toast.success('Agregado a favoritos');
+      } else {
+        toast.info('Quitado de favoritos');
+      }
       updateContact(contact.id, { favorito: !contact.favorito });
     }
   };
@@ -94,29 +106,40 @@ export default function ContactDetailScreen() {
   const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string }) => {
     if (editingReminder) {
       await updateReminder(editingReminder.id, data);
+      toast.success('Recordatorio actualizado');
     } else {
       await addReminder({
         contactoId: id as string,
         ...data,
       });
+      toast.success('Recordatorio guardado');
     }
-  }, [editingReminder, updateReminder, addReminder, id]);
+  }, [editingReminder, updateReminder, addReminder, id, toast]);
 
   const handleAddOrUpdateNote = async () => {
     const trimmedContent = newNoteContent.trim();
-    if (!trimmedContent) return;
-
-    if (editingNoteId) {
-      await updateNote(editingNoteId, trimmedContent);
-      setEditingNoteId(null);
-    } else {
-      await addNote({
-        contactoId: id as string,
-        contenido: trimmedContent,
-        fecha: new Date().toISOString(),
-      });
+    if (!trimmedContent) {
+      toast.error('La nota no puede estar vacía.');
+      return;
     }
-    setNewNoteContent('');
+
+    try {
+      if (editingNoteId) {
+        await updateNote(editingNoteId, trimmedContent);
+        toast.success('Nota actualizada');
+        setEditingNoteId(null);
+      } else {
+        await addNote({
+          contactoId: id as string,
+          contenido: trimmedContent,
+          fecha: new Date().toISOString(),
+        });
+        toast.success('Nota guardada');
+      }
+      setNewNoteContent('');
+    } catch (error: any) {
+      toast.error(error?.message || 'No se pudo guardar la nota.');
+    }
   };
 
   const startEditingNote = (note: Nota) => {
@@ -143,6 +166,7 @@ export default function ContactDetailScreen() {
               cancelEditingNote();
             }
             await deleteNote(noteId);
+            toast.info('Nota eliminada');
           } 
         }
       ]
@@ -165,10 +189,17 @@ export default function ContactDetailScreen() {
       "¿Estás seguro de que deseas eliminar este recordatorio?",
       [
         { text: "Cancelar", style: "cancel" },
-        { text: "Eliminar", style: "destructive", onPress: () => deleteReminder(reminderId) }
+        { 
+          text: "Eliminar", 
+          style: "destructive", 
+          onPress: async () => {
+            await deleteReminder(reminderId);
+            toast.info('Recordatorio eliminado');
+          } 
+        }
       ]
     );
-  }, [deleteReminder]);
+  }, [deleteReminder, toast]);
 
 
   const handleDelete = () => {
@@ -182,9 +213,9 @@ export default function ContactDetailScreen() {
           style: "destructive", 
           onPress: async () => {
             if (contact) {
-              // Limpiar relaciones con empresas antes de borrar
               await syncContactCompanies(contact.id, undefined, undefined);
               await deleteContact(contact.id);
+              toast.success('Contacto eliminado correctamente');
               router.back();
             }
           }
@@ -260,13 +291,24 @@ export default function ContactDetailScreen() {
             </Text>
           ) : null}
           
-          
-          {contact.favorito && (
-            <View style={[styles.favoriteBadge, { backgroundColor: accent2 + '15', borderColor: accent2 + '30' }]}>
-              <Ionicons name="star" size={16} color={accent2} />
-              <Text style={[styles.favoriteText, { color: accent2 }]}>Favorito</Text>
-            </View>
-          )}
+          <View style={styles.badgesRow}>
+            {contact.categoria && (() => {
+              const catColors = colorScheme === 'dark' ? CATEGORY_COLORS_DARK : CATEGORY_COLORS;
+              const catColor = catColors[contact.categoria];
+              return (
+                <View style={[styles.categoriaBadge, { backgroundColor: catColor + '18', borderColor: catColor + '40' }]}>
+                  <View style={[styles.categoriaDot, { backgroundColor: catColor }]} />
+                  <Text style={[styles.categoriaText, { color: catColor }]}>{contact.categoria}</Text>
+                </View>
+              );
+            })()}
+            {contact.favorito && (
+              <View style={[styles.favoriteBadge, { backgroundColor: accent2 + '15', borderColor: accent2 + '30' }]}>
+                <Ionicons name="star" size={16} color={accent2} />
+                <Text style={[styles.favoriteText, { color: accent2 }]}>Favorito</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -331,7 +373,11 @@ export default function ContactDetailScreen() {
           </View>
 
           {contactNotes.map((note, index) => (
-            <View key={note.id} style={[styles.noteCard, { backgroundColor: index % 2 === 0 ? cardColor : primaryColor + '08', borderColor }]}>
+            <Animated.View 
+              key={note.id} 
+              entering={index === 0 ? FadeInDown.duration(300) : undefined}
+              style={[styles.noteCard, { backgroundColor: index % 2 === 0 ? cardColor : primaryColor + '08', borderColor }]}
+            >
               <View style={styles.noteCardHeader}>
                 <Text style={[styles.noteDate, { color: secondaryText }]}>{formatDate(note.fecha)}</Text>
                 <View style={styles.noteCardActions}>
@@ -344,7 +390,7 @@ export default function ContactDetailScreen() {
                 </View>
               </View>
               <Text style={[styles.noteContent, { color: textColor }]}>{note.contenido}</Text>
-            </View>
+            </Animated.View>
           ))}
 
           {contactNotes.length === 0 && (
@@ -474,6 +520,29 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  categoriaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  categoriaDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  categoriaText: {
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   section: {
     marginBottom: 24,

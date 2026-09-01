@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -11,6 +13,8 @@ import { RemindersProvider } from '@/context/RemindersContext';
 import { NotesProvider } from '@/context/NotesContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { ToastProvider } from '@/context/ToastContext';
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
@@ -18,6 +22,21 @@ export const unstable_settings = {
 
 function RootLayoutContent() {
   const colorScheme = useColorScheme();
+  const { user, loading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+
+    const inAuthGroup = segments[0] === 'login';
+
+    if (!user && !inAuthGroup) {
+      router.replace('/login');
+    } else if (user && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [user, loading, segments, router]);
   
   const customDarkTheme = {
     ...DarkTheme,
@@ -48,6 +67,14 @@ function RootLayoutContent() {
   const activeThemeKey = colorScheme === 'dark' ? 'dark' : 'light';
   const themeColors = Colors[activeThemeKey];
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: themeColors.background }}>
+        <ActivityIndicator size="large" color={themeColors.primary} />
+      </View>
+    );
+  }
+
   return (
     <NavigationProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
       <Stack
@@ -63,6 +90,7 @@ function RootLayoutContent() {
           headerBackTitle: 'Atrás',
         }}
       >
+        <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         <Stack.Screen name="contacto/[id]" options={{ title: 'Detalle de Contacto' }} />
@@ -71,6 +99,7 @@ function RootLayoutContent() {
         <Stack.Screen name="empresa/agregar" options={{ title: 'Nueva Empresa' }} />
         <Stack.Screen name="empresa/editar/[id]" options={{ title: 'Editar Empresa' }} />
         <Stack.Screen name="empresa/[id]" options={{ title: 'Empresa' }} />
+        <Stack.Screen name="perfil/editar" options={{ title: 'Editar Perfil' }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </NavigationProvider>
@@ -80,17 +109,21 @@ function RootLayoutContent() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <RemindersProvider>
-          <CompaniesProvider>
-            <ContactsProvider>
-              <NotesProvider>
-                <RootLayoutContent />
-              </NotesProvider>
-            </ContactsProvider>
-          </CompaniesProvider>
-        </RemindersProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <RemindersProvider>
+              <CompaniesProvider>
+                <ContactsProvider>
+                  <NotesProvider>
+                    <RootLayoutContent />
+                  </NotesProvider>
+                </ContactsProvider>
+              </CompaniesProvider>
+            </RemindersProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

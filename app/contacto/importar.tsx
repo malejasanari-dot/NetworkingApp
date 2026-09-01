@@ -6,9 +6,12 @@ import { useRouter, useNavigation } from 'expo-router';
 import { useContacts } from '../../context/ContactsContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 
+import { useToast } from '../../context/ToastContext';
+
 export default function ImportarContactosScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const toast = useToast();
   const { importContacts } = useContacts();
   const [deviceContacts, setDeviceContacts] = useState<Contacts.Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,29 +64,40 @@ export default function ImportarContactosScreen() {
     setSelectedIds(newSelected);
   };
 
+  const [isImporting, setIsImporting] = useState(false);
+
   const handleImport = async () => {
+    if (isImporting) return;
     if (selectedIds.size === 0) {
-      Alert.alert('Aviso', 'Selecciona al menos un contacto para importar.');
+      toast.info('Selecciona al menos un contacto para importar.');
       return;
     }
 
-    const contactsToImport = deviceContacts
-      .filter(c => selectedIds.has((c as any).id))
-      .map((c: any) => ({
-        name: c.name,
-        phone: c.phoneNumbers && c.phoneNumbers.length > 0 ? c.phoneNumbers[0].number : '',
-        company: '',
-        tags: [],
-        favorito: false,
-        notes: undefined,
-      }));
+    setIsImporting(true);
+    try {
+      const contactsToImport = deviceContacts
+        .filter(c => selectedIds.has((c as any).id))
+        .map((c: any) => ({
+          name: c.name,
+          phone: c.phoneNumbers && c.phoneNumbers.length > 0 ? c.phoneNumbers[0].number : '',
+          company: '',
+          tags: [],
+          favorito: false,
+          notes: undefined,
+        }));
 
-    const result = await importContacts(contactsToImport);
-    Alert.alert(
-      'Importación Finalizada',
-      `Se han importado ${result.imported} contactos. ${result.skipped > 0 ? `(${result.skipped} duplicados omitidos)` : ''}`,
-      [{ text: 'OK', onPress: () => router.back() }]
-    );
+      const result = await importContacts(contactsToImport);
+      if (result.imported > 0) {
+        toast.success(`${result.imported} ${result.imported === 1 ? 'contacto importado' : 'contactos importados'} correctamente`);
+      } else {
+        toast.info('No hay contactos nuevos para importar');
+      }
+      router.back();
+    } catch (error: any) {
+      toast.error(error?.message || 'No se pudo completar la importación.');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const filteredContacts = useMemo(() => {
@@ -185,13 +199,22 @@ export default function ImportarContactosScreen() {
 
       <View style={[styles.footer, { borderTopColor: borderColor }]}>
         <TouchableOpacity 
-          style={[styles.importButton, { backgroundColor: accent1 }, selectedIds.size === 0 && { backgroundColor: accent1 + '60' }]} 
+          style={[
+            styles.importButton, 
+            { backgroundColor: accent1 }, 
+            (selectedIds.size === 0 || isImporting) && { backgroundColor: accent1 + '60' }
+          ]} 
           onPress={handleImport}
-          disabled={selectedIds.size === 0}
+          disabled={selectedIds.size === 0 || isImporting}
+          activeOpacity={0.7}
         >
-          <Text style={styles.importButtonText}>
-            Importar {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
-          </Text>
+          {isImporting ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text style={styles.importButtonText}>
+              Importar {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>

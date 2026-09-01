@@ -7,12 +7,15 @@ import { useContacts } from '../../context/ContactsContext';
 import { ContactCard } from '../../components/ContactCard';
 import { useThemeColor } from '../../hooks/use-theme-color';
 
+import { useToast } from '../../context/ToastContext';
+
 export default function EmpresaDetailScreen() {
   const { id } = useLocalSearchParams();
   const { companies, deleteCompany } = useCompanies();
   const { contacts, updateContact } = useContacts();
   const router = useRouter();
   const navigation = useNavigation();
+  const toast = useToast();
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -77,6 +80,7 @@ export default function EmpresaDetailScreen() {
               });
             }
             await deleteCompany(company.id);
+            toast.success('Empresa eliminada correctamente');
             router.back();
           }
         }

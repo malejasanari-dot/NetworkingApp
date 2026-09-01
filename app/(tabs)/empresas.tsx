@@ -116,15 +116,36 @@ export default function EmpresasScreen() {
     <TouchableOpacity 
       style={[styles.companyCard, { backgroundColor: cardColor, borderColor }]}
       onPress={() => handlePressCompany(item.id)}
+      activeOpacity={0.7}
     >
+      <View style={[styles.avatarContainer, { backgroundColor: primaryColor + '12' }]}>
+        <Ionicons name="business" size={20} color={primaryColor} />
+      </View>
+
       <View style={styles.companyInfo}>
-        <Text style={[styles.companyName, { color: primaryColor }]}>{item.name}</Text>
-        {item.sector ? <Text style={[styles.companySector, { color: secondaryText }]}>{item.sector}</Text> : null}
+        <Text style={[styles.companyName, { color: primaryColor }]} numberOfLines={1}>
+          {item.name}
+        </Text>
+        {item.sector ? (
+          <Text style={[styles.companySector, { color: secondaryText }]} numberOfLines={1}>
+            {item.sector}
+          </Text>
+        ) : null}
       </View>
-      <View style={[styles.badge, { backgroundColor: primaryColor + '20' }]}>
-        <Text style={[styles.badgeText, { color: primaryColor }]}>{item.contactCount} contactos</Text>
+
+      <View style={[
+        styles.badge, 
+        { backgroundColor: item.contactCount > 0 ? primaryColor + '15' : borderColor + '30' }
+      ]}>
+        <Text style={[
+          styles.badgeText, 
+          { color: item.contactCount > 0 ? primaryColor : secondaryText }
+        ]}>
+          {item.contactCount === 1 ? '1 contacto' : `${item.contactCount} contactos`}
+        </Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color={secondaryText} />
+
+      <Ionicons name="chevron-forward" size={18} color={secondaryText} />
     </TouchableOpacity>
   ), [cardColor, borderColor, primaryColor, secondaryText, handlePressCompany]);
 
@@ -158,10 +179,12 @@ export default function EmpresasScreen() {
           />
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="business-outline" size={64} color={borderColor} />
-            <Text style={[styles.emptyText, { color: primaryColor }]}>No hay empresas registradas.</Text>
-            <Text style={[styles.emptySubtext, { color: secondaryText }]}>Agregue su primera empresa para comenzar a organizar su red.</Text>
+          <View style={[styles.emptyCard, { backgroundColor: cardColor, borderColor }]}>
+            <Ionicons name="business-outline" size={32} color={secondaryText} style={{ marginBottom: 8 }} />
+            <Text style={[styles.emptyTitle, { color: primaryColor }]}>Sin empresas</Text>
+            <Text style={[styles.emptySubtext, { color: secondaryText }]}>
+              Agrega tu primera empresa o sincroniza tus contactos para construir tu directorio profesional.
+            </Text>
           </View>
         }
       />
@@ -185,72 +208,72 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 80,
   },
   companyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    marginBottom: 8,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  avatarContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
   companyInfo: {
     flex: 1,
+    justifyContent: 'center',
+    marginRight: 6,
   },
   companyName: {
-    fontSize: 18,
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  companySector: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginRight: 6,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  emptyCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    borderRadius: 16,
+    marginTop: 32,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  emptyTitle: {
+    fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 4,
   },
-  companySector: {
-    fontSize: 14,
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 100,
-    paddingHorizontal: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 16,
-    textAlign: 'center',
-  },
   emptySubtext: {
-    fontSize: 14,
-    marginTop: 8,
+    fontSize: 13,
     textAlign: 'center',
+    lineHeight: 18,
   },
 });

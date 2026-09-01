@@ -14,6 +14,13 @@ import {
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  withTiming 
+} from 'react-native-reanimated';
 import { useThemeColor } from '../hooks/use-theme-color';
 import { Recordatorio } from '../constants/MockData';
 import { formatDateString, formatTimeString } from '../utils/date';
@@ -43,12 +50,14 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const secondaryText = useThemeColor({}, 'secondaryText');
   const accent1 = useThemeColor({}, 'accent1');
 
+  const scale = useSharedValue(0.9);
+  const opacity = useSharedValue(0);
+
   useEffect(() => {
     if (initialData) {
       setFecha(new Date(initialData.fecha));
       setNota(initialData.nota || '');
     } else {
-      // Default to tomorrow
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setSeconds(0, 0);
@@ -56,6 +65,21 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       setNota('');
     }
   }, [initialData, isVisible]);
+
+  useEffect(() => {
+    if (isVisible) {
+      scale.value = withSpring(1, { damping: 15, stiffness: 120 });
+      opacity.value = withTiming(1, { duration: 200 });
+    } else {
+      scale.value = 0.9;
+      opacity.value = 0;
+    }
+  }, [isVisible, scale, opacity]);
+
+  const animatedContentStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
 
   const handleConfirmDate = (selectedDate: Date) => {
     const newDate = new Date(fecha);
@@ -79,6 +103,9 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       );
       return;
     }
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     onSave({
       fecha: fecha.toISOString(),
       nota: nota.trim(),
@@ -100,7 +127,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             style={styles.modalContainer}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
           >
-            <View style={[styles.modalContent, { backgroundColor, borderColor }]}>
+            <Animated.View style={[styles.modalContent, { backgroundColor, borderColor }, animatedContentStyle]}>
               <View style={styles.header}>
                 <Text style={[styles.title, { color: primaryColor }]}>
                   {initialData ? 'Editar Recordatorio' : 'Nuevo Recordatorio'}
@@ -159,7 +186,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                   <Text style={styles.saveButtonText}>Guardar</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </Animated.View>
           </KeyboardAvoidingView>
         </View>
       </TouchableWithoutFeedback>

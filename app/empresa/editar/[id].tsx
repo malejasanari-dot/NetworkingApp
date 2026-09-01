@@ -7,10 +7,13 @@ import { useCompanies } from '../../../context/CompaniesContext';
 import { useContacts } from '../../../context/ContactsContext';
 import { useThemeColor } from '../../../hooks/use-theme-color';
 
+import { useToast } from '../../../context/ToastContext';
+
 export default function EditarEmpresaScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const navigation = useNavigation();
+  const toast = useToast();
   const { companies, updateCompany } = useCompanies();
   const { contacts, updateContact } = useContacts();
   
@@ -58,9 +61,78 @@ export default function EditarEmpresaScreen() {
     );
   }
 
+  const isSavingRef = React.useRef(false);
+
+  const initialValues = React.useMemo(() => {
+    if (!company) return null;
+    return {
+      name: company.name || '',
+      sector: company.sector || '',
+      notes: company.notes || '',
+    };
+  }, [company]);
+
+  const hasUnsavedChanges = React.useMemo(() => {
+    if (!initialValues) return false;
+    return (
+      name.trim() !== initialValues.name.trim() ||
+      sector.trim() !== initialValues.sector.trim() ||
+      notes.trim() !== initialValues.notes.trim()
+    );
+  }, [initialValues, name, sector, notes]);
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!hasUnsavedChanges || isSavingRef.current) {
+        return;
+      }
+      e.preventDefault();
+      Alert.alert(
+        "¿Deseas salir sin guardar los cambios?",
+        "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
+        [
+          { text: "Seguir editando", style: "cancel" },
+          {
+            text: "Salir sin guardar",
+            style: "destructive",
+            onPress: () => {
+              isSavingRef.current = true;
+              navigation.dispatch(e.data.action);
+            },
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, hasUnsavedChanges]);
+
+  const handleCancel = () => {
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        "¿Deseas salir sin guardar los cambios?",
+        "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
+        [
+          { text: "Seguir editando", style: "cancel" },
+          { 
+            text: "Salir sin guardar", 
+            style: "destructive", 
+            onPress: () => {
+              isSavingRef.current = true;
+              router.back();
+            } 
+          }
+        ]
+      );
+    } else {
+      router.back();
+    }
+  };
+
   const handleUpdate = async () => {
+    if (isSaving) return;
     if (!name.trim()) {
-      Alert.alert('Error', 'El nombre de la empresa es obligatorio.');
+      toast.error('El nombre de la empresa es obligatorio.');
       return;
     }
 
@@ -70,11 +142,12 @@ export default function EditarEmpresaScreen() {
         c => c.id !== id && c.name.trim().toLowerCase() === newName.toLowerCase()
       );
       if (duplicate) {
-        Alert.alert('Error', 'Ya existe una empresa registrada con este nombre.');
+        toast.error('Ya existe una empresa registrada con este nombre.');
         return;
       }
 
       setIsSaving(true);
+      isSavingRef.current = true;
       try {
         const oldName = company.name;
         await updateCompany(id, {
@@ -94,11 +167,13 @@ export default function EditarEmpresaScreen() {
           }
         }
 
+        toast.success('Empresa actualizada correctamente');
         router.back();
       } catch (error: any) {
-        Alert.alert('Error', error?.message || 'No se pudo actualizar la empresa.');
+        toast.error(error?.message || 'No se pudo actualizar la empresa.');
       } finally {
         setIsSaving(false);
+        isSavingRef.current = false;
       }
     }
   };
@@ -178,6 +253,14 @@ export default function EditarEmpresaScreen() {
               <Text style={styles.saveButtonText}>Actualizar Empresa</Text>
             </>
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.cancelButton, { borderColor }]} 
+          onPress={handleCancel}
+          disabled={isSaving}
+        >
+          <Text style={[styles.cancelButtonText, { color: secondaryText }]}>Cancelar</Text>
         </TouchableOpacity>
       </View>
       </ScrollView>
@@ -282,5 +365,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 10,
+  },
+  cancelButton: {
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

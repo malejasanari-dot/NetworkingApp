@@ -12,6 +12,10 @@ import Animated, {
 import { Contact } from '../constants/MockData';
 import { useReminders } from '../context/RemindersContext';
 import { useThemeColor } from '../hooks/use-theme-color';
+import { useColorScheme } from '../hooks/use-color-scheme';
+import { CATEGORY_COLORS, CATEGORY_COLORS_DARK } from '../constants/categories';
+
+import { useToast } from '../context/ToastContext';
 
 interface ContactCardProps {
   contact: Contact;
@@ -21,8 +25,11 @@ interface ContactCardProps {
 
 export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, onPress, onToggleFavorite }) => {
   const { getRemindersForContact } = useReminders();
+  const toast = useToast();
+  const colorScheme = useColorScheme() ?? 'light';
   const cardColor = useThemeColor({}, 'card');
   const secondaryText = useThemeColor({}, 'secondaryText');
+  const textColor = useThemeColor({}, 'text');
   const primaryColor = useThemeColor({}, 'primary');
   const borderColor = useThemeColor({}, 'border');
   const accent1 = useThemeColor({}, 'accent1');
@@ -33,25 +40,37 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
 
   const scale = useSharedValue(1);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-    };
-  });
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   const handleToggleFavorite = () => {
     if (onToggleFavorite) {
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
-      // Trigger pop animation
       scale.value = withSequence(
         withTiming(1.3, { duration: 100 }),
         withSpring(1, { damping: 10, stiffness: 100 })
       );
+      if (!contact.favorito) {
+        toast.success('Agregado a favoritos');
+      } else {
+        toast.info('Quitado de favoritos');
+      }
       onToggleFavorite();
     }
   };
+
+  const hasCompany = Boolean(contact.company && contact.company.trim());
+  const tagsList = Array.isArray(contact.tags) ? contact.tags.filter(t => typeof t === 'string' && t.trim().length > 0) : [];
+  const maxVisibleTags = 2;
+  const visibleTags = tagsList.slice(0, maxVisibleTags);
+  const extraTagsCount = tagsList.length - maxVisibleTags;
+  const hasCategory = Boolean(contact.categoria);
+
+  const categoryColorMap = colorScheme === 'dark' ? CATEGORY_COLORS_DARK : CATEGORY_COLORS;
+  const categoryColor = contact.categoria ? categoryColorMap[contact.categoria] : primaryColor;
 
   return (
     <TouchableOpacity 
@@ -59,20 +78,59 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
       onPress={onPress} 
       activeOpacity={0.7}
     >
-      <View style={styles.header}>
+      <View style={styles.mainRow}>
+        {/* Avatar Compacto */}
         <View style={[styles.avatarContainer, { backgroundColor: primaryColor }]}>
-          <Text style={[styles.avatarText, { color: '#FFFFFF' }]}>{contact.name.charAt(0)}</Text>
+          <Text style={styles.avatarText}>{contact.name.charAt(0)}</Text>
         </View>
+
+        {/* Informaciones principales */}
         <View style={styles.infoContainer}>
+          {/* Nivel 1: Nombre + Recordatorio */}
           <View style={styles.nameRow}>
-            <Text style={[styles.nameText, { color: primaryColor }]}>{contact.name}</Text>
+            <Text style={[styles.nameText, { color: primaryColor }]} numberOfLines={1}>
+              {contact.name}
+            </Text>
             {hasReminders && (
-              <Ionicons name="notifications" size={14} color={accent1} style={{ marginLeft: 6 }} />
+              <Ionicons name="notifications" size={13} color={accent1} style={styles.reminderIcon} />
             )}
           </View>
-          <Text style={[styles.companyText, { color: secondaryText }]}>{contact.company}</Text>
+
+          {/* Nivel 2: Empresa (solo si existe) */}
+          {hasCompany && (
+            <Text style={[styles.companyText, { color: secondaryText }]} numberOfLines={1}>
+              {contact.company}
+            </Text>
+          )}
+
+          {/* Nivel 3: Categoría y Tags (solo si existen) */}
+          {(hasCategory || tagsList.length > 0) && (
+            <View style={styles.badgesRow}>
+              {hasCategory && (
+                <View style={[styles.categoryBadge, { backgroundColor: categoryColor + '15', borderColor: categoryColor + '30' }]}>
+                  <View style={[styles.categoryDot, { backgroundColor: categoryColor }]} />
+                  <Text style={[styles.categoryText, { color: categoryColor }]}>
+                    {contact.categoria}
+                  </Text>
+                </View>
+              )}
+
+              {visibleTags.map((tag, idx) => (
+                <View key={idx} style={[styles.tagBadge, { backgroundColor: '#FDF361' }]}>
+                  <Text style={styles.tagText} numberOfLines={1}>{tag}</Text>
+                </View>
+              ))}
+
+              {extraTagsCount > 0 && (
+                <View style={[styles.tagBadge, { backgroundColor: borderColor + '40' }]}>
+                  <Text style={[styles.tagText, { color: secondaryText }]}>+{extraTagsCount}</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
-        
+
+        {/* Botón Favorito */}
         <TouchableOpacity 
           onPress={handleToggleFavorite}
           style={styles.favoriteButton}
@@ -81,85 +139,106 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
           <Animated.View style={animatedStyle}>
             <Ionicons 
               name={contact.favorito ? "star" : "star-outline"} 
-              size={24} 
+              size={22} 
               color={contact.favorito ? accent2 : secondaryText} 
             />
           </Animated.View>
         </TouchableOpacity>
       </View>
-      
-      <View style={styles.tagsContainer}>
-        {contact.tags.map((tag, index) => (
-          <View key={index} style={[styles.tagBadge, { backgroundColor: '#FDF361' }]}>
-            <Text style={[styles.tagText, { color: '#333333' }]}>{tag}</Text>
-          </View>
-        ))}
-      </View>
     </TouchableOpacity>
   );
 });
 
-
-
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
     borderWidth: 1,
   },
-  header: {
+  mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   avatarContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   avatarText: {
-    fontSize: 20,
+    color: '#FFFFFF',
+    fontSize: 18,
     fontWeight: 'bold',
   },
   infoContainer: {
     flex: 1,
+    justifyContent: 'center',
+    marginRight: 6,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   nameText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: 'bold',
+    flexShrink: 1,
+  },
+  reminderIcon: {
+    marginLeft: 5,
   },
   companyText: {
-    fontSize: 14,
+    fontSize: 13,
+    marginTop: 1,
   },
-  favoriteButton: {
-    padding: 4,
-  },
-  tagsContainer: {
+  badgesRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 5,
+    marginTop: 4,
+  },
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  categoryDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  categoryText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   tagBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
   tagText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
+    color: '#333333',
+  },
+  favoriteButton: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
+
