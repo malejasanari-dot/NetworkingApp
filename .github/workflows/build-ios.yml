@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       profile:
-        description: 'Perfil de compilación EAS (eas.json)'
+        description: "Perfil de compilación EAS (eas.json)"
         required: true
-        default: 'preview'
+        default: "preview"
         type: choice
         options:
-          - 'preview'
-          - 'development'
-          - 'production'
+          - "preview"
+          - "development"
+          - "production"
   push:
     branches:
       - main
@@ -28,8 +28,8 @@ jobs:
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 22
+          cache: "npm"
 
       - name: Setup Expo & EAS CLI
         uses: expo/expo-github-action@v8
@@ -86,7 +86,7 @@ jobs:
           mkdir -p build/ipa
           echo "Descargando IPA desde EAS..."
           curl -L -o build/ipa/NetworkingApp.ipa "${{ steps.eas-build.outputs.ipa_url }}"
-          
+
           # Validar que el archivo se haya descargado y no esté vacío
           if [ ! -s build/ipa/NetworkingApp.ipa ]; then
             echo "::error::El archivo IPA descargado está vacío o no es válido."
