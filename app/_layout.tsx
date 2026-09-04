@@ -15,6 +15,7 @@ import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
+import { ThemeToggleButton } from '@/components/ThemeToggleButton';
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
@@ -87,11 +88,12 @@ function RootLayoutContent() {
             fontWeight: 'bold',
             color: themeColors.primary,
           },
-          headerBackTitle: 'Atrás',
+          headerRight: () => <ThemeToggleButton />,
+          headerBackButtonDisplayMode: 'minimal',
         }}
       >
         <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ title: 'Inicio' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         <Stack.Screen name="contacto/[id]" options={{ title: 'Detalle de Contacto' }} />
         <Stack.Screen name="contacto/editar/[id]" options={{ title: 'Editar Contacto' }} />
@@ -100,6 +102,9 @@ function RootLayoutContent() {
         <Stack.Screen name="empresa/editar/[id]" options={{ title: 'Editar Empresa' }} />
         <Stack.Screen name="empresa/[id]" options={{ title: 'Empresa' }} />
         <Stack.Screen name="perfil/editar" options={{ title: 'Editar Perfil' }} />
+        <Stack.Screen name="perfil/notificaciones" options={{ title: 'Notificaciones' }} />
+        <Stack.Screen name="perfil/sincronizacion" options={{ title: 'Sincronización' }} />
+        <Stack.Screen name="perfil/privacidad" options={{ title: 'Privacidad y Seguridad' }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </NavigationProvider>

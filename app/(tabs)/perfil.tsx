@@ -280,7 +280,11 @@ export default function PerfilScreen() {
           <Ionicons name="chevron-forward" size={18} color={secondaryText} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.menuItem, { borderBottomColor: borderColor }]} activeOpacity={0.7}>
+        <TouchableOpacity 
+          style={[styles.menuItem, { borderBottomColor: borderColor }]} 
+          onPress={() => router.push('/perfil/notificaciones')}
+          activeOpacity={0.7}
+        >
           <View style={styles.menuItemLeft}>
             <Ionicons name="notifications-outline" size={22} color={primaryColor} />
             <Text style={[styles.menuItemText, { color: textColor }]}>Notificaciones</Text>
@@ -288,7 +292,11 @@ export default function PerfilScreen() {
           <Ionicons name="chevron-forward" size={18} color={secondaryText} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.menuItem, { borderBottomColor: borderColor }]} activeOpacity={0.7}>
+        <TouchableOpacity 
+          style={[styles.menuItem, { borderBottomColor: borderColor }]} 
+          onPress={() => router.push('/perfil/sincronizacion')}
+          activeOpacity={0.7}
+        >
           <View style={styles.menuItemLeft}>
             <Ionicons name="cloud-upload-outline" size={22} color={primaryColor} />
             <Text style={[styles.menuItemText, { color: textColor }]}>Sincronización</Text>
@@ -296,7 +304,11 @@ export default function PerfilScreen() {
           <Ionicons name="chevron-forward" size={18} color={secondaryText} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+        <TouchableOpacity 
+          style={styles.menuItem} 
+          onPress={() => router.push('/perfil/privacidad')}
+          activeOpacity={0.7}
+        >
           <View style={styles.menuItemLeft}>
             <Ionicons name="lock-closed-outline" size={22} color={primaryColor} />
             <Text style={[styles.menuItemText, { color: textColor }]}>Privacidad y Seguridad</Text>

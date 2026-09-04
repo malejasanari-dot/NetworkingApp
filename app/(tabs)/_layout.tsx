@@ -1,18 +1,16 @@
-import { Tabs, useRouter, usePathname } from 'expo-router';
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { Tabs, usePathname, useRouter } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Platform, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useThemeColor } from '../../hooks/use-theme-color';
-import { SmartFAB } from '../../components/SmartFAB';
+import { CustomTabBar } from '../../components/CustomTabBar';
 import { ReminderModal } from '../../components/ReminderModal';
-import { ThemeToggleButton } from '../../components/ThemeToggleButton';
-import { HapticTab } from '../../components/haptic-tab';
-import { useReminders } from '../../context/RemindersContext';
+import { SmartFAB } from '../../components/SmartFAB';
 import { useContacts } from '../../context/ContactsContext';
+import { useReminders } from '../../context/RemindersContext';
+import { useThemeColor } from '../../hooks/use-theme-color';
 
 const HOME_ROUTE = '/(tabs)';
 const TAB_ROUTES = [HOME_ROUTE, '/contactos', '/favoritos', '/empresas', '/perfil'];
@@ -44,11 +42,6 @@ export default function TabLayout() {
   const { contacts } = useContacts();
   const [isReminderModalVisible, setIsReminderModalVisible] = useState(false);
 
-  const activeColor = useThemeColor({}, 'tabIconSelected');
-  const inactiveColor = useThemeColor({}, 'tabIconDefault');
-  const backgroundColor = useThemeColor({}, 'background');
-  const textColor = useThemeColor({}, 'primary');
-  const borderColor = useThemeColor({}, 'border');
   const primaryColor = useThemeColor({}, 'primary');
 
   const isMainScreen = getCurrentTabIndex(pathname) !== -1;
@@ -93,9 +86,7 @@ export default function TabLayout() {
     }
   }, [pathname, router]);
 
-  // Gesto nativo de referencia para declarar coexistencia explícita con RefreshControl y FlatList scroll
-  const nativeGesture = useMemo(() => Gesture.Native(), []);
-
+  // Gesto horizontal para navegar entre las pestañas
   const panGesture = useMemo(() => {
     // Delimitar el área activa del gesto excluyendo completamente la zona física del Tab Bar inferior
     const bottomCutoff = -(55 + (insets.bottom || 0));
@@ -105,7 +96,7 @@ export default function TabLayout() {
       .hitSlop({ bottom: bottomCutoff })
       .activeOffsetX([-35, 35])
       .failOffsetY([-15, 15])
-      .simultaneousWithExternalGesture(nativeGesture)
+      .cancelsTouchesInView(false)
       .onEnd((e) => {
         'worklet';
         const { translationX, velocityX } = e;
@@ -120,50 +111,27 @@ export default function TabLayout() {
           }
         }
       });
-  }, [isMainScreen, handleTabSwipe, nativeGesture, insets.bottom]);
+  }, [isMainScreen, handleTabSwipe, insets.bottom]);
 
   return (
     <View style={{ flex: 1 }}>
       <GestureDetector gesture={panGesture}>
         <View style={{ flex: 1 }}>
           <Tabs
+            tabBar={() => (isMainScreen ? <CustomTabBar /> : null)}
             screenOptions={{
-              tabBarButton: HapticTab,
-              tabBarActiveTintColor: activeColor,
-              tabBarInactiveTintColor: inactiveColor,
-              headerShown: true,
-              headerRight: () => <ThemeToggleButton />,
-              headerStyle: {
-                backgroundColor: backgroundColor,
-              },
-              headerTitleStyle: {
-                fontWeight: 'bold',
-                color: textColor,
-              },
-              tabBarStyle: Platform.select({
-                default: {
-                  backgroundColor: backgroundColor,
-                  borderTopWidth: 1,
-                  borderTopColor: borderColor,
-                },
-              }),
+              headerShown: false,
             }}>
             <Tabs.Screen
               name="index"
               options={{
                 title: 'Inicio',
-                tabBarIcon: ({ color, focused }) => (
-                  <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
-                ),
               }}
             />
             <Tabs.Screen
               name="contactos"
               options={{
                 title: 'Contactos',
-                tabBarIcon: ({ color, focused }) => (
-                  <Ionicons name={focused ? 'people' : 'people-outline'} size={24} color={color} />
-                ),
               }}
             />
             <Tabs.Screen
@@ -176,27 +144,18 @@ export default function TabLayout() {
               name="favoritos"
               options={{
                 title: 'Favoritos',
-                tabBarIcon: ({ color, focused }) => (
-                  <Ionicons name={focused ? 'star' : 'star-outline'} size={24} color={color} />
-                ),
               }}
             />
             <Tabs.Screen
               name="empresas"
               options={{
                 title: 'Empresas',
-                tabBarIcon: ({ color, focused }) => (
-                  <Ionicons name={focused ? 'business' : 'business-outline'} size={24} color={color} />
-                ),
               }}
             />
             <Tabs.Screen
               name="perfil"
               options={{
                 title: 'Perfil',
-                tabBarIcon: ({ color, focused }) => (
-                  <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
-                ),
               }}
             />
           </Tabs>
