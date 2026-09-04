@@ -58,14 +58,15 @@ export default function TabLayout() {
     setIsReminderModalVisible(true);
   }, []);
 
-  const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string }) => {
-    const defaultContactId = contacts.length > 0 ? contacts[0].id : '';
-    await addReminder({
-      contactoId: defaultContactId,
-      fecha: data.fecha,
-      nota: data.nota,
-    });
-  }, [contacts, addReminder]);
+  const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string; contactIds: string[] }) => {
+    for (const contactId of data.contactIds) {
+      await addReminder({
+        contactoId: contactId,
+        fecha: data.fecha,
+        nota: data.nota,
+      });
+    }
+  }, [addReminder]);
 
   const handleTabSwipe = useCallback((direction: 'left' | 'right') => {
     const currentIndex = getCurrentTabIndex(pathname);

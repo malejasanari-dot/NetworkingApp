@@ -64,9 +64,9 @@ export default function HomeScreen() {
   const favoritesCount = useMemo(() => contacts.filter(c => c && c.favorito).length, [contacts]);
   const totalCompanies = companies.length;
 
-  const companyPercentage = useMemo(() => {
+  const relatedCompaniesCount = useMemo(() => {
     if (totalCompanies === 0) return 0;
-    const relatedCompaniesCount = companies.filter(company => {
+    return companies.filter(company => {
       if (!company) return false;
       if (Array.isArray(company.contactIds) && company.contactIds.length > 0) {
         return true;
@@ -79,8 +79,12 @@ export default function HomeScreen() {
         return false;
       });
     }).length;
-    return Math.round((relatedCompaniesCount / totalCompanies) * 100);
   }, [companies, totalCompanies, contacts]);
+
+  const companyPercentage = useMemo(() => {
+    if (totalCompanies === 0) return 0;
+    return Math.round((relatedCompaniesCount / totalCompanies) * 100);
+  }, [relatedCompaniesCount, totalCompanies]);
 
   const favoritesPercentage = useMemo(() => {
     if (totalContacts === 0) return 0;
@@ -278,7 +282,7 @@ export default function HomeScreen() {
             <View style={styles.statBox}>
               <StatsDonutChart companyPercentage={companyPercentage} size={76} companyColor={primaryColor} />
               <Text style={[styles.statLabelText, { color: secondaryText, marginTop: 6 }]} numberOfLines={2}>
-                Empresas relacionadas
+                Empresas relacionadas {relatedCompaniesCount}/{totalCompanies}
               </Text>
             </View>
           </View>

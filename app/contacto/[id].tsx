@@ -103,18 +103,21 @@ export default function ContactDetailScreen() {
     }
   };
 
-  const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string }) => {
+  const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string; contactIds: string[] }) => {
     if (editingReminder) {
-      await updateReminder(editingReminder.id, data);
+      await updateReminder(editingReminder.id, { fecha: data.fecha, nota: data.nota });
       toast.success('Recordatorio actualizado');
     } else {
-      await addReminder({
-        contactoId: id as string,
-        ...data,
-      });
+      for (const contactId of data.contactIds) {
+        await addReminder({
+          contactoId: contactId,
+          fecha: data.fecha,
+          nota: data.nota,
+        });
+      }
       toast.success('Recordatorio guardado');
     }
-  }, [editingReminder, updateReminder, addReminder, id, toast]);
+  }, [editingReminder, updateReminder, addReminder, toast]);
 
   const handleAddOrUpdateNote = async () => {
     const trimmedContent = newNoteContent.trim();
@@ -433,6 +436,7 @@ export default function ContactDetailScreen() {
           }}
           onSave={handleSaveReminder}
           initialData={editingReminder}
+          initialContactId={id as string}
         />
       </ScrollView>
     </KeyboardAvoidingView>
