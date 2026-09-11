@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,11 +6,9 @@ import {
   ScrollView,
   Switch,
   Platform,
-  Alert,
 } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
 import { useThemeColor } from '../../hooks/use-theme-color';
 
 export default function NotificacionesScreen() {
@@ -27,15 +25,15 @@ export default function NotificacionesScreen() {
   const accent2 = useThemeColor({}, 'accent2');
 
   // Estados locales para los interruptores
-  const [generalEnabled, setGeneralEnabled] = useState(false);
+  const [generalEnabled, setGeneralEnabled] = useState(true);
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [activitySummaryEnabled, setActivitySummaryEnabled] = useState(true);
   const [appAlertsEnabled, setAppAlertsEnabled] = useState(true);
 
   // Estado del permiso en el sistema
   const [systemPermissionStatus, setSystemPermissionStatus] = useState<
-    'granted' | 'denied' | 'undetermined' | 'checking'
-  >('checking');
+    'granted' | 'denied' | 'undetermined'
+  >('granted');
 
   // Configuración del Header de navegación
   useLayoutEffect(() => {
@@ -47,90 +45,10 @@ export default function NotificacionesScreen() {
     });
   }, [navigation, backgroundColor, primaryColor]);
 
-  // Verificar el estado inicial de permisos en el sistema operativo
-  const checkInitialPermissions = useCallback(async () => {
-    try {
-      if (Platform.OS === 'web') {
-        setSystemPermissionStatus('undetermined');
-        return;
-      }
-      const settings = await Notifications.getPermissionsAsync();
-      const isGranted =
-        settings.granted ||
-        settings.ios?.status === Notifications.IosAuthorizationStatus.AUTHORIZED ||
-        settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
-
-      if (isGranted) {
-        setSystemPermissionStatus('granted');
-        setGeneralEnabled(true);
-      } else {
-        setSystemPermissionStatus(
-          settings.status === 'denied' ? 'denied' : 'undetermined'
-        );
-        setGeneralEnabled(false);
-      }
-    } catch {
-      setSystemPermissionStatus('undetermined');
-    }
-  }, []);
-
-  useEffect(() => {
-    checkInitialPermissions();
-  }, [checkInitialPermissions]);
-
-  // Manejador del interruptor general con solicitud de permisos de expo-notifications
-  const handleToggleGeneral = async (newValue: boolean) => {
-    if (newValue) {
-      try {
-        if (Platform.OS !== 'web') {
-          const currentSettings = await Notifications.getPermissionsAsync();
-          let isGranted =
-            currentSettings.granted ||
-            currentSettings.ios?.status === Notifications.IosAuthorizationStatus.AUTHORIZED ||
-            currentSettings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
-
-          if (!isGranted) {
-            const requestResult = await Notifications.requestPermissionsAsync({
-              ios: {
-                allowAlert: true,
-                allowBadge: true,
-                allowSound: true,
-              },
-            });
-
-            isGranted =
-              requestResult.granted ||
-              requestResult.ios?.status === Notifications.IosAuthorizationStatus.AUTHORIZED ||
-              requestResult.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
-          }
-
-          if (isGranted) {
-            setSystemPermissionStatus('granted');
-            setGeneralEnabled(true);
-          } else {
-            setSystemPermissionStatus('denied');
-            setGeneralEnabled(false);
-            Alert.alert(
-              'Permisos requeridos',
-              'Para recibir notificaciones de NetworkingApp, habilita los permisos en los ajustes de tu dispositivo.',
-              [{ text: 'Entendido', style: 'default' }]
-            );
-          }
-        } else {
-          setGeneralEnabled(true);
-          setSystemPermissionStatus('granted');
-        }
-      } catch {
-        Alert.alert(
-          'Aviso',
-          'No se pudo verificar el permiso de notificaciones en este dispositivo.',
-          [{ text: 'Aceptar', style: 'default' }]
-        );
-        setGeneralEnabled(false);
-      }
-    } else {
-      setGeneralEnabled(false);
-    }
+  // Manejador del interruptor general seguro para Expo Go
+  const handleToggleGeneral = (newValue: boolean) => {
+    setGeneralEnabled(newValue);
+    setSystemPermissionStatus(newValue ? 'granted' : 'undetermined');
   };
 
   return (

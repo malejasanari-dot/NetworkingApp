@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { DarkTheme, DefaultTheme, ThemeProvider as NavigationProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
@@ -38,32 +37,6 @@ function RootLayoutContent() {
       router.replace('/(tabs)');
     }
   }, [user, loading, segments, router]);
-  
-  const customDarkTheme = {
-    ...DarkTheme,
-    colors: {
-      ...DarkTheme.colors,
-      primary: Colors.dark.primary,
-      background: Colors.dark.background,
-      card: Colors.dark.card,
-      text: Colors.dark.text,
-      border: Colors.dark.border,
-      notification: Colors.dark.notification,
-    },
-  };
-
-  const customLightTheme = {
-    ...DefaultTheme,
-    colors: {
-      ...DefaultTheme.colors,
-      primary: Colors.light.primary,
-      background: Colors.light.background,
-      card: Colors.light.card,
-      text: Colors.light.text,
-      border: Colors.light.border,
-      notification: Colors.light.notification,
-    },
-  };
 
   const activeThemeKey = colorScheme === 'dark' ? 'dark' : 'light';
   const themeColors = Colors[activeThemeKey];
@@ -77,7 +50,7 @@ function RootLayoutContent() {
   }
 
   return (
-    <NavigationProvider value={colorScheme === 'dark' ? customDarkTheme : customLightTheme}>
+    <>
       <Stack
         screenOptions={{
           headerStyle: {
@@ -107,7 +80,7 @@ function RootLayoutContent() {
         <Stack.Screen name="perfil/privacidad" options={{ title: 'Privacidad y Seguridad' }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-    </NavigationProvider>
+    </>
   );
 }
 
