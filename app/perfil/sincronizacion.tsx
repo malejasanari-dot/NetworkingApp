@@ -5,9 +5,11 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Contacts from 'expo-contacts';
 import { useThemeColor } from '../../hooks/use-theme-color';
 
 export default function SincronizacionScreen() {
@@ -32,6 +34,43 @@ export default function SincronizacionScreen() {
       headerTitleStyle: { color: primaryColor, fontWeight: 'bold' },
     });
   }, [navigation, backgroundColor, primaryColor]);
+
+  const handleImportContacts = async () => {
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status === 'granted') {
+        const { data } = await Contacts.getContactsAsync({
+          fields: [
+            Contacts.Fields.Name,
+            Contacts.Fields.PhoneNumbers,
+            Contacts.Fields.Emails,
+          ],
+        });
+
+        if (data.length > 0) {
+          Alert.alert(
+            'Contactos encontrados',
+            `Se encontraron ${data.length} contacto${data.length === 1 ? '' : 's'} en tu dispositivo.`
+          );
+        } else {
+          Alert.alert(
+            'Sin contactos',
+            'No se encontraron contactos en tu dispositivo.'
+          );
+        }
+      } else {
+        Alert.alert(
+          'Permiso denegado',
+          'No se otorgó permiso para acceder a los contactos del dispositivo.'
+        );
+      }
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        'Ocurrió un error al intentar acceder a los contactos del dispositivo.'
+      );
+    }
+  };
 
   return (
     <ScrollView
@@ -62,6 +101,7 @@ export default function SincronizacionScreen() {
           <TouchableOpacity
             style={[styles.itemRow, { borderBottomColor: borderColor }]}
             activeOpacity={0.7}
+            onPress={handleImportContacts}
           >
             <View style={styles.itemLeft}>
               <View style={[styles.iconBadge, { backgroundColor: primaryColor + '12' }]}>
