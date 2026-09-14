@@ -45,3 +45,6 @@ yarn-error.*
 coverage/
 build/
 temp/
+
+# Apple signing credentials
+credentials.json

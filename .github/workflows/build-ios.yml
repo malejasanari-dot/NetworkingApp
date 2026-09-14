@@ -1,4 +1,4 @@
-name: iOS IPA Build (EAS)
+name: iOS IPA Build (GitHub)
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ on:
 jobs:
   build-ipa:
     name: Build iOS IPA with EAS
-    runs-on: macos-latest
+    runs-on: macos-15
 
     steps:
       - name: Checkout repository
@@ -38,83 +38,47 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Verify EXPO_TOKEN
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+          if [ -z "${EXPO_TOKEN}" ]; then
             echo "::error::Falta el GitHub Secret 'EXPO_TOKEN'."
-            echo "Por favor genera un token en https://expo.dev/settings/access-tokens y agrégalo en Settings > Secrets and variables > Actions."
             exit 1
           fi
+
           echo "EXPO_TOKEN detectado. Verificando sesión EAS..."
           eas whoami
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Trigger EAS Build for iOS
-        id: eas-build
+      - name: Build IPA locally
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           SELECTED_PROFILE="${{ github.event.inputs.profile || 'preview' }}"
-          echo "Iniciando compilación en EAS para iOS con perfil: $SELECTED_PROFILE"
 
-          # Ejecutar EAS Build mostrando logs en tiempo real y capturando la salida completa
-          set +e
+          echo "Iniciando compilación local de iOS en GitHub"
+          echo "Perfil: $SELECTED_PROFILE"
+
+          mkdir -p build/ipa
+
           eas build \
             --platform ios \
             --profile "$SELECTED_PROFILE" \
+            --local \
             --non-interactive \
-            --wait \
-            --json 2>&1 | tee build-output.log
-          EAS_EXIT_CODE="${PIPESTATUS[0]}"
-          set -e
+            --freeze-credentials \
+            --output ./build/ipa/NetworkingApp.ipa
 
-          if [ "$EAS_EXIT_CODE" -ne 0 ]; then
-            echo "::error::EAS Build falló con código de salida $EAS_EXIT_CODE."
-            echo "==================== DETALLE DE FALLO EAS ===================="
-            cat build-output.log
-            echo "=============================================================="
-            exit "$EAS_EXIT_CODE"
-          fi
-
-          # Extraer URL del artefacto IPA
-          IPA_URL=$(node -e '
-            const fs = require("fs");
-            const raw = fs.readFileSync("build-output.log", "utf8");
-            let data;
-            try {
-              data = JSON.parse(raw);
-            } catch (e) {
-              const jsonMatch = raw.match(/(\{|\[)[\s\S]*(\}|\])/);
-              if (jsonMatch) {
-                data = JSON.parse(jsonMatch[0]);
-              } else {
-                console.error("No se pudo parsear el JSON de salida de EAS:\n" + raw);
-                process.exit(1);
-              }
-            }
-            const buildObj = Array.isArray(data) ? data[0] : data;
-            const url = (buildObj.artifacts && (buildObj.artifacts.buildUrl || buildObj.artifacts.applicationArchiveUrl)) || buildObj.buildUrl;
-            if (!url) {
-              console.error("No se encontró URL de descarga en la respuesta de EAS:", raw);
-              process.exit(1);
-            }
-            console.log(url);
-          ')
-
-          echo "ipa_url=$IPA_URL" >> "$GITHUB_OUTPUT"
-          echo "Compilación completada. URL de descarga obtenida."
-
-      - name: Download generated IPA
+      - name: Verify IPA
         run: |
-          mkdir -p build/ipa
-          echo "Descargando IPA desde EAS..."
-          curl -L -o build/ipa/NetworkingApp.ipa "${{ steps.eas-build.outputs.ipa_url }}"
-
-          # Validar que el archivo se haya descargado y no esté vacío
           if [ ! -s build/ipa/NetworkingApp.ipa ]; then
-            echo "::error::El archivo IPA descargado está vacío o no es válido."
+            echo "::error::El archivo IPA no fue generado o es inválido."
             exit 1
           fi
-          echo "IPA descargada exitosamente:"
+
+          echo "IPA generada exitosamente:"
           ls -lh build/ipa/NetworkingApp.ipa
 
       - name: Upload IPA Artifact to GitHub
