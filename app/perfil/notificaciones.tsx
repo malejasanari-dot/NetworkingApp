@@ -32,7 +32,7 @@ export default function NotificacionesScreen() {
 
   // Estado del permiso en el sistema
   const [systemPermissionStatus, setSystemPermissionStatus] = useState<
-    'granted' | 'denied' | 'undetermined'
+    'granted' | 'denied' | 'undetermined' | 'checking'
   >('granted');
 
   // Configuración del Header de navegación

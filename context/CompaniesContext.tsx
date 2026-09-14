@@ -18,7 +18,7 @@ interface CompaniesContextData {
   addCompany: (company: Omit<Company, 'id'>) => Promise<Company>;
   updateCompany: (id: string, updatedData: Partial<Company>) => Promise<void>;
   deleteCompany: (id: string) => Promise<void>;
-  syncCompanies: (contacts: Contact[]) => Promise<{ created: number }>;
+  syncCompanies: (contacts: Contact[]) => Promise<{ created: number; updatedCompanies: Company[] }>;
   syncContactCompanies: (contactId: string, empresaActual: string | undefined, empresasAnteriores: string[] | undefined) => Promise<void>;
   refreshCompanies: () => Promise<void>;
   isLoading: boolean;
@@ -264,7 +264,7 @@ export const CompaniesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [user?.id]);
 
   const syncCompanies = useCallback(async (contacts: Contact[]) => {
-    if (!user?.id) return { created: 0 };
+    if (!user?.id) return { created: 0, updatedCompanies: [] };
 
     try {
       const currentCompanies = [...companies];
@@ -326,10 +326,10 @@ export const CompaniesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
 
       setCompanies(updatedCompanies);
-      return { created: createdCount };
+      return { created: createdCount, updatedCompanies };
     } catch (e) {
       console.error('Error syncing companies in Supabase:', e);
-      return { created: 0 };
+      return { created: 0, updatedCompanies: [] };
     }
   }, [user?.id, companies]);
 

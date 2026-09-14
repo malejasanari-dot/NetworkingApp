@@ -16,6 +16,7 @@ export interface SmartFABProps {
   onAddContact: () => void;
   onAddCompany: () => void;
   onAddReminder: () => void;
+  onSyncContacts: () => void;
   primaryColor?: string;
 }
 
@@ -23,6 +24,7 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
   onAddContact,
   onAddCompany,
   onAddReminder,
+  onSyncContacts,
   primaryColor = '#4F185A',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -128,6 +130,17 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
                 <Ionicons name="notifications-outline" size={20} color={accent2} />
               </View>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.menuItem, { backgroundColor: cardColor, borderColor }]}
+              onPress={() => handleAction(onSyncContacts)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.menuLabel, { color: textColor }]}>Sincronizar contactos</Text>
+              <View style={[styles.iconCircle, { backgroundColor: primaryColor + '15' }]}>
+                <Ionicons name="sync-outline" size={20} color={primaryColor} />
+              </View>
+            </TouchableOpacity>
           </Animated.View>
         )}
 
@@ -147,7 +160,7 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
 
 const styles = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     zIndex: 998,
   },
@@ -159,15 +172,15 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     alignItems: 'flex-end',
-    marginBottom: 12,
-    gap: 10,
+    marginBottom: 8,
+    gap: 6,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 11,
+    borderRadius: 18,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -178,12 +191,12 @@ const styles = StyleSheet.create({
   menuLabel: {
     fontSize: 13,
     fontWeight: '600',
-    marginRight: 10,
+    marginRight: 8,
   },
   iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
   },

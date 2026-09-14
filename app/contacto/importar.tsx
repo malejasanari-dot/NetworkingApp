@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
-import * as Contacts from 'expo-contacts';
+import { Contact, ContactField, requestPermissionsAsync } from 'expo-contacts';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
 import { useContacts } from '../../context/ContactsContext';
@@ -13,7 +13,7 @@ export default function ImportarContactosScreen() {
   const navigation = useNavigation();
   const toast = useToast();
   const { importContacts } = useContacts();
-  const [deviceContacts, setDeviceContacts] = useState<Contacts.Contact[]>([]);
+  const [deviceContacts, setDeviceContacts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
@@ -38,19 +38,34 @@ export default function ImportarContactosScreen() {
 
   useEffect(() => {
     (async () => {
-      const { status } = await Contacts.requestPermissionsAsync();
-      setPermissionStatus(status);
-      if (status === 'granted') {
-        const { data } = await Contacts.getContactsAsync({
-          fields: [Contacts.Fields.Emails, Contacts.Fields.PhoneNumbers],
-        });
+      try {
+        const { status } = await requestPermissionsAsync();
+        setPermissionStatus(status);
+        if (status === 'granted') {
+          const data = await Contact.getAllDetails([
+            ContactField.FULL_NAME,
+            ContactField.GIVEN_NAME,
+            ContactField.MIDDLE_NAME,
+            ContactField.FAMILY_NAME,
+            ContactField.PHONES,
+            ContactField.EMAILS,
+            ContactField.COMPANY,
+            ContactField.JOB_TITLE,
+          ]);
 
-        if (data.length > 0) {
-          const filtered = data.filter(c => c.name && c.name.trim().length > 0);
-          setDeviceContacts(filtered);
+          if (data && data.length > 0) {
+            const filtered = data.filter(c => {
+              const fullName = c.fullName || [c.givenName, c.familyName].filter(Boolean).join(' ');
+              return fullName && fullName.trim().length > 0;
+            });
+            setDeviceContacts(filtered);
+          }
         }
+      } catch (e) {
+        console.error('Error cargando contactos del dispositivo:', e);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     })();
   }, []);
 
@@ -76,15 +91,20 @@ export default function ImportarContactosScreen() {
     setIsImporting(true);
     try {
       const contactsToImport = deviceContacts
-        .filter(c => selectedIds.has((c as any).id))
-        .map((c: any) => ({
-          name: c.name,
-          phone: c.phoneNumbers && c.phoneNumbers.length > 0 ? c.phoneNumbers[0].number : '',
-          company: '',
-          tags: [],
-          favorito: false,
-          notes: undefined,
-        }));
+        .filter(c => selectedIds.has(c.id))
+        .map((c: any) => {
+          const fullName = c.fullName || [c.givenName, c.familyName].filter(Boolean).join(' ') || c.name || [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Contacto sin nombre';
+          const phone = (c.phones && c.phones.length > 0 ? c.phones[0].number : '') || (c.phoneNumbers && c.phoneNumbers.length > 0 ? c.phoneNumbers[0].number : '') || '';
+          const company = c.company || c.jobTitle || '';
+          return {
+            name: fullName.trim(),
+            phone: phone,
+            company: company,
+            tags: [],
+            favorito: false,
+            notes: undefined,
+          };
+        });
 
       const result = await importContacts(contactsToImport);
       if (result.imported > 0) {
@@ -101,9 +121,16 @@ export default function ImportarContactosScreen() {
   };
 
   const filteredContacts = useMemo(() => {
-    return deviceContacts.filter(contact => 
-      contact.name && contact.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return deviceContacts;
+    return deviceContacts.filter(contact => {
+      const fullName = contact.fullName || [contact.givenName, contact.familyName].filter(Boolean).join(' ') || contact.name || [contact.firstName, contact.lastName].filter(Boolean).join(' ');
+      const phone = (contact.phones && contact.phones.length > 0 ? contact.phones[0].number : '') || (contact.phoneNumbers && contact.phoneNumbers.length > 0 ? contact.phoneNumbers[0].number : '') || '';
+      return (
+        (fullName && fullName.toLowerCase().includes(q)) ||
+        (phone && phone.toLowerCase().includes(q))
+      );
+    });
   }, [deviceContacts, searchQuery]);
 
 
@@ -161,7 +188,8 @@ export default function ImportarContactosScreen() {
           keyboardDismissMode="on-drag"
           renderItem={({ item }: { item: any }) => {
           const isSelected = selectedIds.has(item.id);
-          const phoneNumber = item.phoneNumbers && item.phoneNumbers.length > 0 ? item.phoneNumbers[0].number : 'Sin número';
+          const phoneNumber = (item.phones && item.phones.length > 0 ? item.phones[0].number : '') || (item.phoneNumbers && item.phoneNumbers.length > 0 ? item.phoneNumbers[0].number : '') || 'Sin número';
+          const name = item.fullName || [item.givenName, item.familyName].filter(Boolean).join(' ') || item.name || [item.firstName, item.lastName].filter(Boolean).join(' ') || 'Contacto';
           
           return (
             <TouchableOpacity 
@@ -173,7 +201,9 @@ export default function ImportarContactosScreen() {
               onPress={() => toggleSelect((item as any).id)}
             >
               <View style={styles.contactInfo}>
-                <Text style={[styles.contactName, { color: textColor }]}>{item.name}</Text>
+                <Text style={[styles.contactName, { color: textColor }]}>
+                  {name}
+                </Text>
                 <Text style={[styles.contactPhone, { color: secondaryText }]}>{phoneNumber}</Text>
               </View>
               <View style={[

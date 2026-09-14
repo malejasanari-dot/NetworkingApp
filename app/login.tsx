@@ -10,12 +10,15 @@ import {
   Platform,
   ScrollView,
   Image,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useThemeColor } from '../hooks/use-theme-color';
+
+const PRIVACY_POLICY_URL = 'https://crn.lhh.com/#/public/privacypolicypg/193';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -25,6 +28,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -32,6 +36,14 @@ export default function LoginScreen() {
   const secondaryText = useThemeColor({}, 'secondaryText');
   const primaryColor = useThemeColor({}, 'primary');
   const borderColor = useThemeColor({}, 'border');
+
+  const handleOpenPrivacyPolicy = async () => {
+    try {
+      await Linking.openURL(PRIVACY_POLICY_URL);
+    } catch {
+      toast.error('No se pudo abrir la Política de Privacidad.');
+    }
+  };
 
   const handleLogin = async () => {
     if (isSubmitting) return;
@@ -41,6 +53,11 @@ export default function LoginScreen() {
 
     if (!trimmedEmail || !trimmedPassword) {
       toast.error('Por favor ingresa tu correo y contraseña/cédula.');
+      return;
+    }
+
+    if (!acceptedTerms) {
+      toast.error('Debes autorizar el tratamiento de tus datos personales para continuar.');
       return;
     }
 
@@ -67,6 +84,7 @@ export default function LoginScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           {/* Header Identity with LHH Logo */}
           <View style={styles.header}>
@@ -130,6 +148,54 @@ export default function LoginScreen() {
                   />
                 </TouchableOpacity>
               </View>
+            </View>
+
+            {/* Sección de Autorización de Tratamiento de Datos Personales */}
+            <View style={[styles.termsContainer, { borderColor, backgroundColor: backgroundColor + '40' }]}>
+              <Text style={[styles.termsTitle, { color: primaryColor }]}>
+                Autorización para el tratamiento de datos personales
+              </Text>
+
+              <Text style={[styles.termsText, { color: secondaryText }]}>
+                Al registrarte y utilizar esta aplicación, autorizas el tratamiento de los datos personales que suministres, incluyendo información de identificación, contacto, perfil profesional y la información que decidas registrar dentro de la plataforma.
+              </Text>
+
+              <Text style={[styles.termsText, { color: secondaryText }]}>
+                Los datos serán tratados para permitir el funcionamiento de la aplicación, administrar tu cuenta, gestionar tus contactos y empresas, generar recordatorios y proporcionar las funcionalidades que hayas solicitado.
+              </Text>
+
+              <Text style={[styles.termsText, { color: secondaryText }]}>
+                Puedes consultar nuestra Política de Privacidad y conocer los derechos que te corresponden como titular de los datos, así como los mecanismos disponibles para ejercerlos.
+              </Text>
+
+              {/* Botón Ver Política de Privacidad */}
+              <TouchableOpacity
+                style={[styles.policyButton, { borderColor: primaryColor + '40', backgroundColor: primaryColor + '0A' }]}
+                onPress={handleOpenPrivacyPolicy}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="open-outline" size={16} color={primaryColor} style={{ marginRight: 6 }} />
+                <Text style={[styles.policyButtonText, { color: primaryColor }]}>
+                  Ver Política de Privacidad
+                </Text>
+              </TouchableOpacity>
+
+              {/* Checkbox de Autorización */}
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => setAcceptedTerms(!acceptedTerms)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={acceptedTerms ? 'checkbox' : 'square-outline'}
+                  size={22}
+                  color={acceptedTerms ? primaryColor : secondaryText}
+                  style={styles.checkboxIcon}
+                />
+                <Text style={[styles.checkboxLabel, { color: textColor }]}>
+                  Autorizo el tratamiento de mis datos personales
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Submit Button */}
@@ -223,6 +289,51 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     padding: 4,
+  },
+  termsContainer: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 20,
+  },
+  termsTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  termsText: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  policyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginTop: 4,
+    marginBottom: 14,
+  },
+  policyButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  checkboxIcon: {
+    marginRight: 10,
+  },
+  checkboxLabel: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
   },
   button: {
     height: 52,

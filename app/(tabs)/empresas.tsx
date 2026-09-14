@@ -47,10 +47,11 @@ export default function EmpresasScreen() {
     setIsSyncing(true);
     try {
       const result = await syncCompanies(contacts);
-      
+      const allCompanies = result.updatedCompanies || companies;
+
       for (const contact of contacts) {
         if (!contact.empresaActual && contact.company && contact.company.trim()) {
-          const matchedCompany = companies.find(
+          const matchedCompany = allCompanies.find(
             c => c.name.toLowerCase() === contact.company?.trim().toLowerCase()
           );
           if (matchedCompany) {

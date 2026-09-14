@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,14 +6,31 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Contacts from 'expo-contacts';
+import { Paths, File } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useThemeColor } from '../../hooks/use-theme-color';
+import { useContacts } from '../../context/ContactsContext';
+import { useCompanies } from '../../context/CompaniesContext';
+
+const escapeCsv = (val?: string | null): string => {
+  if (val === undefined || val === null) return '""';
+  const str = String(val);
+  return `"${str.replace(/"/g, '""')}"`;
+};
 
 export default function SincronizacionScreen() {
+  const router = useRouter();
   const navigation = useNavigation();
+  const { contacts, updateContact } = useContacts();
+  const { companies, syncCompanies } = useCompanies();
+
+  const [isExportingContacts, setIsExportingContacts] = useState(false);
+  const [isSyncingCompanies, setIsSyncingCompanies] = useState(false);
+  const [isExportingCompanies, setIsExportingCompanies] = useState(false);
 
   // Colores del sistema de temas existente
   const backgroundColor = useThemeColor({}, 'background');
@@ -35,40 +52,197 @@ export default function SincronizacionScreen() {
     });
   }, [navigation, backgroundColor, primaryColor]);
 
-  const handleImportContacts = async () => {
-    try {
-      const { status } = await Contacts.requestPermissionsAsync();
-      if (status === 'granted') {
-        const { data } = await Contacts.getContactsAsync({
-          fields: [
-            Contacts.Fields.Name,
-            Contacts.Fields.PhoneNumbers,
-            Contacts.Fields.Emails,
-          ],
-        });
+  // 1. Importar contactos: Navegar a la pantalla de selección e importación
+  const handleImportContacts = () => {
+    router.push('/contacto/importar');
+  };
 
-        if (data.length > 0) {
-          Alert.alert(
-            'Contactos encontrados',
-            `Se encontraron ${data.length} contacto${data.length === 1 ? '' : 's'} en tu dispositivo.`
-          );
-        } else {
-          Alert.alert(
-            'Sin contactos',
-            'No se encontraron contactos en tu dispositivo.'
-          );
-        }
-      } else {
-        Alert.alert(
-          'Permiso denegado',
-          'No se otorgó permiso para acceder a los contactos del dispositivo.'
-        );
+  // 2. Exportar contactos: Generar CSV y compartir con expo-sharing
+  const handleExportContacts = async () => {
+    if (isExportingContacts) return;
+
+    if (!contacts || contacts.length === 0) {
+      Alert.alert(
+        'Sin contactos',
+        'No tienes contactos registrados en tu red para exportar.'
+      );
+      return;
+    }
+
+    setIsExportingContacts(true);
+    try {
+      const headers = [
+        'Nombre',
+        'Teléfono',
+        'Empresa',
+        'Categoría',
+        'Etiquetas',
+        'Notas',
+        'Fecha de Registro',
+      ];
+
+      const rows = contacts.map(c => {
+        const companyName = c.company || (c.empresaActual ? companies.find(comp => comp.id === c.empresaActual)?.name : '') || '';
+        const tags = Array.isArray(c.tags) ? c.tags.join('; ') : '';
+        return [
+          escapeCsv(c.name),
+          escapeCsv(c.phone || ''),
+          escapeCsv(companyName),
+          escapeCsv(c.categoria || ''),
+          escapeCsv(tags),
+          escapeCsv(c.notes || ''),
+          escapeCsv(c.dateAdded || ''),
+        ].join(',');
+      });
+
+      const csvContent = '\uFEFF' + [headers.map(h => escapeCsv(h)).join(','), ...rows].join('\n');
+      const file = new File(Paths.cache, 'contactos_networking.csv');
+      if (file.exists) {
+        file.delete();
       }
-    } catch (error) {
+      file.create();
+      file.write(csvContent);
+
+      if (!file.exists) {
+        throw new Error('No se pudo generar el archivo de contactos.');
+      }
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert(
+          'Compartir no disponible',
+          'La función para compartir archivos no está disponible en este dispositivo.'
+        );
+        return;
+      }
+
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'text/csv',
+        dialogTitle: 'Exportar Contactos',
+        UTI: 'public.comma-separated-values-text',
+      });
+    } catch (error: any) {
+      console.error('Error al exportar contactos:', error);
       Alert.alert(
         'Error',
-        'Ocurrió un error al intentar acceder a los contactos del dispositivo.'
+        error?.message || 'Ocurrió un error al exportar los contactos.'
       );
+    } finally {
+      setIsExportingContacts(false);
+    }
+  };
+
+  // 3. Importar / Sincronizar empresas desde los contactos
+  const handleSyncCompanies = async () => {
+    if (isSyncingCompanies) return;
+
+    if (!contacts || contacts.length === 0) {
+      Alert.alert(
+        'Sin contactos',
+        'No tienes contactos registrados para identificar empresas.'
+      );
+      return;
+    }
+
+    setIsSyncingCompanies(true);
+    try {
+      const result = await syncCompanies(contacts);
+      const allCompanies = result.updatedCompanies || companies;
+
+      // Vincular empresaActual en los contactos si corresponde
+      for (const contact of contacts) {
+        if (!contact.empresaActual && contact.company && contact.company.trim()) {
+          const matchedCompany = allCompanies.find(
+            c => c.name.toLowerCase() === contact.company?.trim().toLowerCase()
+          );
+          if (matchedCompany) {
+            await updateContact(contact.id, { empresaActual: matchedCompany.id });
+          }
+        }
+      }
+
+      Alert.alert(
+        'Sincronización Completada',
+        `Se han identificado y procesado tus empresas (${result.created} ${result.created === 1 ? 'empresa nueva creada' : 'empresas nuevas creadas'}).`
+      );
+    } catch (error: any) {
+      console.error('Error al sincronizar empresas:', error);
+      Alert.alert('Error', 'No se pudo completar la sincronización de empresas.');
+    } finally {
+      setIsSyncingCompanies(false);
+    }
+  };
+
+  // 4. Exportar empresas: Generar CSV y compartir con expo-sharing
+  const handleExportCompanies = async () => {
+    if (isExportingCompanies) return;
+
+    if (!companies || companies.length === 0) {
+      Alert.alert(
+        'Sin empresas',
+        'No tienes empresas registradas en tu red para exportar.'
+      );
+      return;
+    }
+
+    setIsExportingCompanies(true);
+    try {
+      const headers = [
+        'Nombre Empresa',
+        'Sector',
+        'Notas',
+        'Cantidad Contactos',
+      ];
+
+      const rows = companies.map(comp => {
+        const associatedCount = contacts.filter(
+          c => c.empresaActual === comp.id ||
+               c.empresasAnteriores?.includes(comp.id) ||
+               (!c.empresaActual && c.company && c.company.toLowerCase() === comp.name.toLowerCase())
+        ).length;
+
+        return [
+          escapeCsv(comp.name),
+          escapeCsv(comp.sector || ''),
+          escapeCsv(comp.notes || ''),
+          escapeCsv(associatedCount.toString()),
+        ].join(',');
+      });
+
+      const csvContent = '\uFEFF' + [headers.map(h => escapeCsv(h)).join(','), ...rows].join('\n');
+      const file = new File(Paths.cache, 'empresas_networking.csv');
+      if (file.exists) {
+        file.delete();
+      }
+      file.create();
+      file.write(csvContent);
+
+      if (!file.exists) {
+        throw new Error('No se pudo generar el archivo de empresas.');
+      }
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert(
+          'Compartir no disponible',
+          'La función para compartir archivos no está disponible en este dispositivo.'
+        );
+        return;
+      }
+
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'text/csv',
+        dialogTitle: 'Exportar Empresas',
+        UTI: 'public.comma-separated-values-text',
+      });
+    } catch (error: any) {
+      console.error('Error al exportar empresas:', error);
+      Alert.alert(
+        'Error',
+        error?.message || 'Ocurrió un error al exportar las empresas.'
+      );
+    } finally {
+      setIsExportingCompanies(false);
     }
   };
 
@@ -120,7 +294,12 @@ export default function SincronizacionScreen() {
           </TouchableOpacity>
 
           {/* Opción: Exportar contactos */}
-          <TouchableOpacity style={styles.itemRow} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.itemRow}
+            activeOpacity={0.7}
+            onPress={handleExportContacts}
+            disabled={isExportingContacts}
+          >
             <View style={styles.itemLeft}>
               <View style={[styles.iconBadge, { backgroundColor: primaryColor + '12' }]}>
                 <Ionicons name="share-outline" size={20} color={primaryColor} />
@@ -134,7 +313,11 @@ export default function SincronizacionScreen() {
                 </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={secondaryText} />
+            {isExportingContacts ? (
+              <ActivityIndicator size="small" color={primaryColor} />
+            ) : (
+              <Ionicons name="chevron-forward" size={18} color={secondaryText} />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -151,6 +334,8 @@ export default function SincronizacionScreen() {
           <TouchableOpacity
             style={[styles.itemRow, { borderBottomColor: borderColor }]}
             activeOpacity={0.7}
+            onPress={handleSyncCompanies}
+            disabled={isSyncingCompanies}
           >
             <View style={styles.itemLeft}>
               <View style={[styles.iconBadge, { backgroundColor: accent1 + '15' }]}>
@@ -165,11 +350,20 @@ export default function SincronizacionScreen() {
                 </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={secondaryText} />
+            {isSyncingCompanies ? (
+              <ActivityIndicator size="small" color={accent1} />
+            ) : (
+              <Ionicons name="chevron-forward" size={18} color={secondaryText} />
+            )}
           </TouchableOpacity>
 
           {/* Opción: Exportar empresas */}
-          <TouchableOpacity style={styles.itemRow} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.itemRow}
+            activeOpacity={0.7}
+            onPress={handleExportCompanies}
+            disabled={isExportingCompanies}
+          >
             <View style={styles.itemLeft}>
               <View style={[styles.iconBadge, { backgroundColor: accent1 + '15' }]}>
                 <Ionicons name="share-outline" size={20} color={accent1} />
@@ -183,7 +377,11 @@ export default function SincronizacionScreen() {
                 </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={secondaryText} />
+            {isExportingCompanies ? (
+              <ActivityIndicator size="small" color={accent1} />
+            ) : (
+              <Ionicons name="chevron-forward" size={18} color={secondaryText} />
+            )}
           </TouchableOpacity>
         </View>
       </View>

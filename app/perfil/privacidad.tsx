@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   Pressable,
+  Linking,
 } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,12 +48,17 @@ export default function PrivacidadSeguridadScreen() {
     );
   };
 
-  const handlePoliticaPrivacidad = () => {
-    Alert.alert(
-      'Política de privacidad',
-      'Nos comprometemos a proteger tu privacidad. No compartimos tu información personal con terceros sin tu consentimiento explícito.',
-      [{ text: 'Cerrar', style: 'default' }]
-    );
+  const handlePoliticaPrivacidad = async () => {
+    const url = 'https://crn.lhh.com/#/public/privacypolicypg/193';
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert(
+        'Error',
+        'No se pudo abrir el enlace de la Política de Privacidad.',
+        [{ text: 'Aceptar', style: 'default' }]
+      );
+    }
   };
 
   const handleOpenDeleteModal = () => {

@@ -58,6 +58,10 @@ export default function TabLayout() {
     setIsReminderModalVisible(true);
   }, []);
 
+  const handleFABSyncContacts = useCallback(() => {
+    router.push('/contacto/importar');
+  }, [router]);
+
   const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string; contactIds: string[] }) => {
     for (const contactId of data.contactIds) {
       await addReminder({
@@ -169,6 +173,7 @@ export default function TabLayout() {
           onAddContact={handleFABAddContact}
           onAddCompany={handleFABAddCompany}
           onAddReminder={handleFABAddReminder}
+          onSyncContacts={handleFABSyncContacts}
           primaryColor={primaryColor}
         />
       )}
