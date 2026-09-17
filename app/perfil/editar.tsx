@@ -14,6 +14,7 @@ import { useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { ControlledInput } from '../../components/ui/controlled-input';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
@@ -138,7 +139,7 @@ export default function EditarPerfilScreen() {
     }
   };
 
-  // Selección de imagen (recorte cuadrado 1:1, compresión JPEG 0.85, base64 directo)
+  // Selección y procesamiento de imagen (1:1, redimensionado 500x500, compresión JPEG, base64)
   const handlePickImage = async () => {
     if (isSaving || isProcessingImage) return;
 
@@ -153,8 +154,7 @@ export default function EditarPerfilScreen() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.85,
-        base64: true,
+        quality: 0.9,
       });
 
       if (result.canceled || !result.assets || result.assets.length === 0) {
@@ -162,9 +162,17 @@ export default function EditarPerfilScreen() {
       }
 
       setIsProcessingImage(true);
+      const selectedUri = result.assets[0].uri;
 
-      setPendingAvatarUri(result.assets[0].uri);
-      setPendingAvatarBase64(result.assets[0].base64 || null);
+      // Procesar y comprimir a máximo 500x500 px JPEG con base64 para React Native
+      const manipResult = await ImageManipulator.manipulateAsync(
+        selectedUri,
+        [{ resize: { width: 500, height: 500 } }],
+        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+
+      setPendingAvatarUri(manipResult.uri);
+      setPendingAvatarBase64(manipResult.base64 || null);
     } catch (err: any) {
       console.error('Error al seleccionar imagen:', err);
       toast.error('No se pudo procesar la imagen seleccionada.');
