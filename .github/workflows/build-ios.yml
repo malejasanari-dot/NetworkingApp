@@ -16,6 +16,15 @@ on:
     branches:
       - build-ios-github
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   build-ipa:
     name: Build iOS IPA with EAS Local
@@ -107,3 +116,238 @@ jobs:
           path: build/ipa/NetworkingApp.ipa
           if-no-files-found: error
           retention-days: 14
+
+      - name: Prepare GitHub Pages Distribution
+        run: |
+          echo "Preparando archivos para distribución en GitHub Pages..."
+          mkdir -p build/pages
+          cp build/ipa/NetworkingApp.ipa build/pages/NetworkingApp.ipa
+
+          echo "Extrayendo metadatos reales de la IPA..."
+          mkdir -p build/temp_ipa
+          unzip -q -o build/ipa/NetworkingApp.ipa "Payload/*.app/Info.plist" -d build/temp_ipa
+          INFO_PLIST=$(find build/temp_ipa/Payload -name "Info.plist" | head -n 1)
+
+          if [ -z "$INFO_PLIST" ] || [ ! -f "$INFO_PLIST" ]; then
+            echo "::error::No se pudo localizar Info.plist dentro de la IPA."
+            exit 1
+          fi
+
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$INFO_PLIST" 2>/dev/null || echo "")
+          BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$INFO_PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$INFO_PLIST" 2>/dev/null || echo "1.0.0")
+          DISPLAY_NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$INFO_PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Print :CFBundleName" "$INFO_PLIST" 2>/dev/null || echo "NetworkingApp")
+
+          echo "Metadatos detectados:"
+          echo "  - CFBundleIdentifier: $BUNDLE_ID"
+          echo "  - CFBundleVersion: $BUNDLE_VERSION"
+          echo "  - CFBundleDisplayName: $DISPLAY_NAME"
+
+          if [ -z "$BUNDLE_ID" ]; then
+            echo "::error::No se pudo obtener CFBundleIdentifier desde el archivo Info.plist."
+            exit 1
+          fi
+
+          echo "Generando build/pages/manifest.plist..."
+          cat <<EOF > build/pages/manifest.plist
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>items</key>
+  <array>
+    <dict>
+      <key>assets</key>
+      <array>
+        <dict>
+          <key>kind</key>
+          <string>software-package</string>
+          <key>url</key>
+          <string>https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/NetworkingApp.ipa</string>
+        </dict>
+      </array>
+      <key>metadata</key>
+      <dict>
+        <key>bundle-identifier</key>
+        <string>$BUNDLE_ID</string>
+        <key>bundle-version</key>
+        <string>$BUNDLE_VERSION</string>
+        <key>kind</key>
+        <string>software</string>
+        <key>title</key>
+        <string>$DISPLAY_NAME</string>
+      </dict>
+    </dict>
+  </array>
+</dict>
+</plist>
+EOF
+
+          echo "Generando build/pages/index.html..."
+          cat <<EOF > build/pages/index.html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetworkingApp - Instalación iPhone</title>
+  <style>
+    :root {
+      --primary: #007AFF;
+      --primary-hover: #0056b3;
+      --bg: #F2F2F7;
+      --card-bg: #FFFFFF;
+      --text: #1C1C1E;
+      --text-secondary: #8E8E93;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 24px;
+      padding: 36px 28px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+    .app-icon {
+      width: 96px;
+      height: 96px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #007AFF, #5856D6);
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 16px rgba(0, 122, 255, 0.25);
+    }
+    .app-icon svg {
+      width: 52px;
+      height: 52px;
+      fill: #ffffff;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin: 0 0 8px;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin: 0 0 28px;
+    }
+    .btn-install {
+      display: inline-block;
+      background-color: var(--primary);
+      color: #FFFFFF;
+      text-decoration: none;
+      font-size: 17px;
+      font-weight: 600;
+      padding: 16px 32px;
+      border-radius: 14px;
+      width: 100%;
+      box-sizing: border-box;
+      transition: background-color 0.2s, transform 0.1s;
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+    }
+    .btn-install:active {
+      background-color: var(--primary-hover);
+      transform: scale(0.98);
+    }
+    .instructions {
+      margin-top: 28px;
+      text-align: left;
+      background: #F9F9FB;
+      border-radius: 14px;
+      padding: 16px 20px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .instructions ol {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+    .instructions li {
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="app-icon">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+      </svg>
+    </div>
+    <h1>NetworkingApp</h1>
+    <p class="subtitle">Instalación de prueba para iPhone</p>
+
+    <a href="itms-services://?action=download-manifest&amp;url=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/manifest.plist" class="btn-install">
+      Instalar NetworkingApp
+    </a>
+
+    <div class="instructions">
+      <strong>Instrucciones para iOS:</strong>
+      <ol>
+        <li>Abre este enlace desde <strong>Safari</strong> en tu iPhone.</li>
+        <li>Toca en <strong>Instalar NetworkingApp</strong> y confirma la instalación.</li>
+        <li>La aplicación comenzará a instalarse en tu pantalla de inicio.</li>
+      </ol>
+    </div>
+  </div>
+</body>
+</html>
+EOF
+
+          echo "Creando build/pages/.nojekyll..."
+          touch build/pages/.nojekyll
+
+          echo "Contenido del directorio build/pages:"
+          ls -la build/pages
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/pages
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build-ipa
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Show Deployment & Installation URLs
+        run: |
+          PAGES_URL="${{ steps.deployment.outputs.page_url }}"
+          MANIFEST_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/manifest.plist"
+          INSTALL_URL="itms-services://?action=download-manifest&url=${MANIFEST_URL}"
+          echo "==================== DEPLOYMENT COMPLETADO ===================="
+          echo "URL de GitHub Pages: ${PAGES_URL}"
+          echo "URL del Manifest: ${MANIFEST_URL}"
+          echo "URL de instalación directa de NetworkingApp:"
+          echo "${INSTALL_URL}"
+          echo "================================================================"
