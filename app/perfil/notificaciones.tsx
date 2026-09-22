@@ -6,13 +6,16 @@ import {
   ScrollView,
   Switch,
   Platform,
+  Linking,
 } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from '../../hooks/use-theme-color';
+import { useNotifications, PermissionStatus } from '../../hooks/useNotifications';
 
 export default function NotificacionesScreen() {
   const navigation = useNavigation();
+  const { permissionStatus, requestPermission } = useNotifications();
 
   // Colores del sistema de temas existente
   const backgroundColor = useThemeColor({}, 'background');
@@ -24,16 +27,14 @@ export default function NotificacionesScreen() {
   const accent1 = useThemeColor({}, 'accent1');
   const accent2 = useThemeColor({}, 'accent2');
 
-  // Estados locales para los interruptores
-  const [generalEnabled, setGeneralEnabled] = useState(true);
+  // Estados locales para los sub-interruptores (puramente visuales por ahora)
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [activitySummaryEnabled, setActivitySummaryEnabled] = useState(true);
   const [appAlertsEnabled, setAppAlertsEnabled] = useState(true);
 
-  // Estado del permiso en el sistema
-  const [systemPermissionStatus, setSystemPermissionStatus] = useState<
-    'granted' | 'denied' | 'undetermined' | 'checking'
-  >('granted');
+  // El estado real del sistema determina el interruptor general
+  const systemPermissionStatus: PermissionStatus = permissionStatus;
+  const generalEnabled = permissionStatus === 'granted';
 
   // Configuración del Header de navegación
   useLayoutEffect(() => {
@@ -45,10 +46,20 @@ export default function NotificacionesScreen() {
     });
   }, [navigation, backgroundColor, primaryColor]);
 
-  // Manejador del interruptor general seguro para Expo Go
-  const handleToggleGeneral = (newValue: boolean) => {
-    setGeneralEnabled(newValue);
-    setSystemPermissionStatus(newValue ? 'granted' : 'undetermined');
+  // Manejador del interruptor general — conectado al permiso real del sistema
+  const handleToggleGeneral = async (newValue: boolean) => {
+    if (newValue) {
+      // Si quiere activar: solicitar permiso si es undetermined
+      if (permissionStatus === 'undetermined') {
+        await requestPermission();
+      } else if (permissionStatus === 'denied') {
+        // Si fue denegado previamente, guiar al usuario a Configuración
+        Linking.openSettings();
+      }
+    } else {
+      // Si quiere desactivar: guiar al usuario a Configuración del sistema
+      Linking.openSettings();
+    }
   };
 
   return (
