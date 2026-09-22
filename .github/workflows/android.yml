@@ -1,62 +1,173 @@
 name: Android Build
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      profile:
+        description: "Perfil de compilación EAS (eas.json)"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - "production"
+          - "preview"
 
 jobs:
-  build:
+  build-android:
+    name: Build Android APK + AAB with EAS Cloud
     runs-on: ubuntu-latest
-    env:
-      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "17"
-
-      - name: Setup Node.js 24
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "22"
           cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Setup Expo & EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Prebuild Android if folder does not exist
+      - name: Verify EXPO_TOKEN
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          if [ ! -d "android" ]; then
-            npx expo prebuild --platform android --non-interactive
-          else
-            echo "La carpeta 'android' ya existe. Omitiendo prebuild."
+          if [ -z "${EXPO_TOKEN}" ]; then
+            echo "::error::Falta el GitHub Secret 'EXPO_TOKEN'."
+            exit 1
           fi
 
-      - name: Build Release APK
+          echo "EXPO_TOKEN detectado."
+          eas whoami
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      # ============================================================
+      # AAB — Google Play
+      # ============================================================
+
+      - name: Build AAB with EAS Cloud
+        id: eas-aab
         env:
-          NODE_ENV: production
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleRelease
+          SELECTED_PROFILE="${{ github.event.inputs.profile || 'production' }}"
 
-      - name: Verify generated APK directory
-        run: ls -R android/app/build/outputs/apk/
+          echo "Generando AAB con perfil: $SELECTED_PROFILE"
 
-      - name: Upload Release APK Artifact
+          BUILD_OUTPUT=$(eas build \
+            --platform android \
+            --profile "$SELECTED_PROFILE" \
+            --non-interactive \
+            --json 2>&1)
+
+          echo "$BUILD_OUTPUT"
+
+          ARTIFACT_URL=$(echo "$BUILD_OUTPUT" \
+            | grep -o '"buildUrl":"[^"]*"' \
+            | head -1 \
+            | sed 's/"buildUrl":"//;s/"//')
+
+          if [ -z "$ARTIFACT_URL" ]; then
+            echo "::error::No se pudo obtener la URL del AAB."
+            exit 1
+          fi
+
+          echo "artifact_url=$ARTIFACT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Download AAB
+        run: |
+          mkdir -p build/aab
+
+          curl -L \
+            -o build/aab/NetworkingApp.aab \
+            "${{ steps.eas-aab.outputs.artifact_url }}"
+
+          if [ ! -s build/aab/NetworkingApp.aab ]; then
+            echo "::error::El AAB no fue descargado correctamente."
+            exit 1
+          fi
+
+          ls -lh build/aab/NetworkingApp.aab
+
+      - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MyNetworkingApp-Release
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: NetworkingApp-Android-AAB
+          path: build/aab/NetworkingApp.aab
           if-no-files-found: error
+          retention-days: 14
 
-      - name: Print exact APK path
-        run: echo "android/app/build/outputs/apk/release/app-release.apk"
+      # ============================================================
+      # APK — Pruebas en dispositivo
+      # ============================================================
+
+      - name: Build APK with EAS Cloud
+        id: eas-apk
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          echo "Generando APK con perfil preview..."
+
+          BUILD_OUTPUT=$(eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --json 2>&1)
+
+          echo "$BUILD_OUTPUT"
+
+          ARTIFACT_URL=$(echo "$BUILD_OUTPUT" \
+            | grep -o '"buildUrl":"[^"]*"' \
+            | head -1 \
+            | sed 's/"buildUrl":"//;s/"//')
+
+          if [ -z "$ARTIFACT_URL" ]; then
+            echo "::error::No se pudo obtener la URL del APK."
+            exit 1
+          fi
+
+          echo "artifact_url=$ARTIFACT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Download APK
+        run: |
+          mkdir -p build/apk
+
+          curl -L \
+            -o build/apk/NetworkingApp.apk \
+            "${{ steps.eas-apk.outputs.artifact_url }}"
+
+          if [ ! -s build/apk/NetworkingApp.apk ]; then
+            echo "::error::El APK no fue descargado correctamente."
+            exit 1
+          fi
+
+          ls -lh build/apk/NetworkingApp.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NetworkingApp-Android-APK
+          path: build/apk/NetworkingApp.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      # ============================================================
+      # Resumen
+      # ============================================================
+
+      - name: Build Summary
+        run: |
+          echo "==================== ANDROID BUILD COMPLETADO ===================="
+          echo "AAB: NetworkingApp-Android-AAB"
+          echo "APK: NetworkingApp-Android-APK"
+          echo "AAB: listo para Google Play Console"
+          echo "APK: listo para pruebas en dispositivos Android"
+          echo "Retención: 14 días"
+          echo "==================================================================="
