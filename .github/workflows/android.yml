@@ -82,9 +82,9 @@ jobs:
           echo "$BUILD_OUTPUT"
 
           ARTIFACT_URL=$(echo "$BUILD_OUTPUT" \
-            | grep -o '"buildUrl":"[^"]*"' \
+            | grep -oE '"buildUrl"[[:space:]]*:[[:space:]]*"[^"]*"' \
             | head -1 \
-            | sed 's/"buildUrl":"//;s/"//')
+            | sed -E 's/"buildUrl"[[:space:]]*:[[:space:]]*"//;s/"//')
 
           if [ -z "$ARTIFACT_URL" ]; then
             echo "::error::No se pudo obtener la URL del AAB."
@@ -136,9 +136,9 @@ jobs:
           echo "$BUILD_OUTPUT"
 
           ARTIFACT_URL=$(echo "$BUILD_OUTPUT" \
-            | grep -o '"buildUrl":"[^"]*"' \
+            | grep -oE '"buildUrl"[[:space:]]*:[[:space:]]*"[^"]*"' \
             | head -1 \
-            | sed 's/"buildUrl":"//;s/"//')
+            | sed -E 's/"buildUrl"[[:space:]]*:[[:space:]]*"//;s/"//')
 
           if [ -z "$ARTIFACT_URL" ]; then
             echo "::error::No se pudo obtener la URL del APK."
