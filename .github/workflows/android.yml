@@ -1,6 +1,9 @@
 name: Android Build
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       profile:
@@ -11,6 +14,15 @@ on:
         options:
           - "production"
           - "preview"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   build-android:
@@ -159,6 +171,184 @@ jobs:
           retention-days: 14
 
       # ============================================================
+      # Publicación en GitHub Pages (Descarga APK)
+      # ============================================================
+
+      - name: Prepare GitHub Pages
+        run: |
+          mkdir -p build/pages
+          cp build/apk/NetworkingApp.apk build/pages/NetworkingApp.apk
+
+          APK_SIZE=$(ls -lh build/apk/NetworkingApp.apk | awk '{print $5}')
+          BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
+
+          cat << 'EOF' > build/pages/index.html
+          <!DOCTYPE html>
+          <html lang="es">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Instalar NetworkingApp (Android)</title>
+            <style>
+              :root {
+                --primary: #3DDC84;
+                --primary-hover: #32B86C;
+                --primary-dark: #073042;
+                --bg: #F8F9FA;
+                --card-bg: #FFFFFF;
+                --text: #1F2937;
+                --text-secondary: #6B7280;
+              }
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                background-color: var(--bg);
+                color: var(--text);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                margin: 0;
+                padding: 20px;
+                box-sizing: border-box;
+              }
+              .card {
+                background: var(--card-bg);
+                border-radius: 24px;
+                padding: 36px 28px;
+                max-width: 420px;
+                width: 100%;
+                text-align: center;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+              }
+              .app-icon {
+                width: 96px;
+                height: 96px;
+                border-radius: 20px;
+                background: linear-gradient(135deg, #073042, #3DDC84);
+                margin: 0 auto 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 8px 16px rgba(61, 220, 132, 0.25);
+              }
+              .app-icon svg {
+                width: 52px;
+                height: 52px;
+                fill: #ffffff;
+              }
+              h1 {
+                font-size: 26px;
+                font-weight: 700;
+                margin: 0 0 8px;
+                letter-spacing: -0.5px;
+              }
+              .subtitle {
+                font-size: 16px;
+                color: var(--text-secondary);
+                margin: 0 0 20px;
+              }
+              .meta-info {
+                display: flex;
+                justify-content: center;
+                gap: 12px;
+                margin-bottom: 24px;
+                font-size: 13px;
+                color: var(--text-secondary);
+              }
+              .badge {
+                background: #E5E7EB;
+                padding: 4px 10px;
+                border-radius: 8px;
+                font-weight: 500;
+              }
+              .btn-install {
+                display: inline-block;
+                background-color: var(--primary-dark);
+                color: #FFFFFF;
+                text-decoration: none;
+                font-size: 17px;
+                font-weight: 600;
+                padding: 16px 32px;
+                border-radius: 14px;
+                width: 100%;
+                box-sizing: border-box;
+                transition: background-color 0.2s, transform 0.1s;
+                box-shadow: 0 4px 12px rgba(7, 48, 66, 0.2);
+              }
+              .btn-install:hover {
+                background-color: #0A435C;
+              }
+              .btn-install:active {
+                transform: scale(0.98);
+              }
+              .instructions {
+                margin-top: 28px;
+                text-align: left;
+                background: #F9F9FB;
+                border-radius: 14px;
+                padding: 16px 20px;
+                font-size: 13px;
+                color: var(--text-secondary);
+                line-height: 1.5;
+              }
+              .instructions ol {
+                margin: 8px 0 0;
+                padding-left: 18px;
+              }
+              .instructions li {
+                margin-bottom: 6px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="app-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.996-3.4572c.1051-.1822.0428-.4154-.1394-.5206-.1822-.1051-.4154-.0428-.5206.1394l-2.0224 3.503c-1.556-.7089-3.3274-1.109-5.2011-1.109s-3.6451.4001-5.2011 1.109L4.7709 5.483c-.1052-.1822-.3384-.2445-.5206-.1394-.1822.1052-.2445.3384-.1394.5206l1.996 3.4572C2.6842 11.1611 0 14.8872 0 19.2558h24c0-4.3686-2.6842-8.0947-6.1185-9.9344"/>
+                </svg>
+              </div>
+              <h1>NetworkingApp</h1>
+              <p class="subtitle">Instalación de prueba para Android</p>
+
+              <div class="meta-info">
+                <span class="badge">BUILD_DATE_PLACEHOLDER</span>
+              </div>
+
+              <a href="NetworkingApp.apk" class="btn-install" download>
+                Descargar APK
+              </a>
+
+              <div class="instructions">
+                <strong>Instrucciones para Android:</strong>
+                <ol>
+                  <li>Toca en <strong>Descargar APK</strong> para guardar el archivo.</li>
+                  <li>Abre la notificación de descarga o busca el archivo en tu carpeta de <em>Descargas</em>.</li>
+                  <li>Si Android lo solicita, permite la opción <em>"Instalar aplicaciones de fuentes desconocidas"</em> en tu navegador.</li>
+                  <li>Pulsa en <strong>Instalar</strong> para finalizar.</li>
+                </ol>
+              </div>
+            </div>
+          </body>
+          </html>
+          EOF
+
+          sed -i "s/BUILD_DATE_PLACEHOLDER/${BUILD_DATE} (${APK_SIZE})/g" build/pages/index.html
+
+          echo "Creando build/pages/.nojekyll..."
+          touch build/pages/.nojekyll
+
+          echo "Contenido del directorio build/pages:"
+          ls -la build/pages
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/pages
+
+      # ============================================================
       # Resumen
       # ============================================================
 
@@ -169,5 +359,28 @@ jobs:
           echo "APK: NetworkingApp-Android-APK"
           echo "AAB: listo para Google Play Console"
           echo "APK: listo para pruebas en dispositivos Android"
-          echo "Retención: 14 días"
+          echo "Retención de artefactos: 14 días"
           echo "==================================================================="
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build-android
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Show Deployment URLs
+        run: |
+          PAGES_URL="${{ steps.deployment.outputs.page_url }}"
+          echo "==================== DEPLOYMENT COMPLETADO ===================="
+          echo "URL de GitHub Pages: ${PAGES_URL}"
+          echo "Descarga directa APK: ${PAGES_URL}NetworkingApp.apk"
+          echo "================================================================"
