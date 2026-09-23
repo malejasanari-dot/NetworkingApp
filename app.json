@@ -22,7 +22,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.personalnetworkingapp"
+      "package": "networking.app.lhh"
     },
     "web": {
       "output": "static",
