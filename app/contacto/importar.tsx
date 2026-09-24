@@ -271,6 +271,9 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     borderBottomWidth: 1,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   title: {
     fontSize: 20,
@@ -284,6 +287,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 4,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   searchBox: {
     flexDirection: 'row',
@@ -302,6 +308,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   contactItem: {
     flexDirection: 'row',
@@ -333,6 +342,9 @@ const styles = StyleSheet.create({
   footer: {
     padding: 20,
     borderTopWidth: 1,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   importButton: {
     paddingVertical: 16,

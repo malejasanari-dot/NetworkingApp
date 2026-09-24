@@ -526,6 +526,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     padding: 24,
     paddingBottom: 60,
   },

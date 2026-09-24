@@ -210,6 +210,9 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   listContent: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 80,

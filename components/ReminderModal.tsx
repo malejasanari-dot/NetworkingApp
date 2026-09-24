@@ -28,6 +28,19 @@ import { useContacts } from '../context/ContactsContext';
 import { formatDateString, formatTimeString } from '../utils/date';
 import { shadowStyle } from '../utils/shadow';
 
+const formatDateForInput = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const formatTimeForInput = (date: Date): string => {
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+};
+
 interface ReminderModalProps {
   isVisible: boolean;
   onClose: () => void;
@@ -146,6 +159,28 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     newDate.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
     setFecha(newDate);
     setTimePickerVisibility(false);
+  };
+
+  const handleWebDateChange = (val: string) => {
+    if (!val) return;
+    const parts = val.split('-').map(Number);
+    if (parts.length === 3 && !parts.some(isNaN)) {
+      const [y, m, d] = parts;
+      const updated = fecha && !isNaN(fecha.getTime()) ? new Date(fecha) : new Date();
+      updated.setFullYear(y, m - 1, d);
+      setFecha(updated);
+    }
+  };
+
+  const handleWebTimeChange = (val: string) => {
+    if (!val) return;
+    const parts = val.split(':').map(Number);
+    if (parts.length >= 2 && !parts.some(isNaN)) {
+      const [h, min] = parts;
+      const updated = fecha && !isNaN(fecha.getTime()) ? new Date(fecha) : new Date();
+      updated.setHours(h, min, 0, 0);
+      setFecha(updated);
+    }
   };
 
   const isSaveDisabled = selectedContactIds.length === 0;
@@ -316,21 +351,70 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                 <View style={styles.formGroup}>
                   <Text style={[styles.label, { color: primaryColor }]}>¿Cuándo quieres hacer el seguimiento?</Text>
                   <View style={styles.dateTimeContainer}>
-                    <TouchableOpacity 
-                      style={[styles.dateSelector, { flex: 1, marginRight: 6, borderColor, backgroundColor: borderColor + '10' }]} 
-                      onPress={() => setDatePickerVisibility(true)}
-                    >
-                      <Ionicons name="calendar-outline" size={20} color={accent1} />
-                      <Text style={[styles.dateText, { color: textColor }]}>{formatDateString(fecha)}</Text>
-                    </TouchableOpacity>
+                    {Platform.OS === 'web' ? (
+                      <View style={[styles.dateSelector, { flex: 1, marginRight: 6, borderColor, backgroundColor: borderColor + '10' }]}>
+                        <Ionicons name="calendar-outline" size={18} color={accent1} style={{ marginRight: 6 }} />
+                        <input
+                          type="date"
+                          value={formatDateForInput(fecha)}
+                          min={initialData ? undefined : formatDateForInput(new Date())}
+                          onChange={(e: any) => handleWebDateChange(e.target.value)}
+                          style={{
+                            flex: 1,
+                            border: 'none',
+                            outline: 'none',
+                            background: 'transparent',
+                            color: textColor,
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            width: '100%',
+                            fontFamily: 'inherit',
+                            colorScheme: textColor === '#ECEDEE' || textColor === '#FFFFFF' ? 'dark' : 'light',
+                          }}
+                        />
+                      </View>
+                    ) : (
+                      <TouchableOpacity 
+                        style={[styles.dateSelector, { flex: 1, marginRight: 6, borderColor, backgroundColor: borderColor + '10' }]} 
+                        onPress={() => setDatePickerVisibility(true)}
+                      >
+                        <Ionicons name="calendar-outline" size={20} color={accent1} />
+                        <Text style={[styles.dateText, { color: textColor }]}>{formatDateString(fecha)}</Text>
+                      </TouchableOpacity>
+                    )}
 
-                    <TouchableOpacity 
-                      style={[styles.dateSelector, { flex: 1, marginLeft: 6, borderColor, backgroundColor: borderColor + '10' }]} 
-                      onPress={() => setTimePickerVisibility(true)}
-                    >
-                      <Ionicons name="time-outline" size={20} color={accent1} />
-                      <Text style={[styles.dateText, { color: textColor }]}>{formatTimeString(fecha)}</Text>
-                    </TouchableOpacity>
+                    {Platform.OS === 'web' ? (
+                      <View style={[styles.dateSelector, { flex: 1, marginLeft: 6, borderColor, backgroundColor: borderColor + '10' }]}>
+                        <Ionicons name="time-outline" size={18} color={accent1} style={{ marginRight: 6 }} />
+                        <input
+                          type="time"
+                          value={formatTimeForInput(fecha)}
+                          onChange={(e: any) => handleWebTimeChange(e.target.value)}
+                          style={{
+                            flex: 1,
+                            border: 'none',
+                            outline: 'none',
+                            background: 'transparent',
+                            color: textColor,
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            width: '100%',
+                            fontFamily: 'inherit',
+                            colorScheme: textColor === '#ECEDEE' || textColor === '#FFFFFF' ? 'dark' : 'light',
+                          }}
+                        />
+                      </View>
+                    ) : (
+                      <TouchableOpacity 
+                        style={[styles.dateSelector, { flex: 1, marginLeft: 6, borderColor, backgroundColor: borderColor + '10' }]} 
+                        onPress={() => setTimePickerVisibility(true)}
+                      >
+                        <Ionicons name="time-outline" size={20} color={accent1} />
+                        <Text style={[styles.dateText, { color: textColor }]}>{formatTimeString(fecha)}</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
 
@@ -376,22 +460,26 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
         </View>
       </Pressable>
 
-      <DateTimePickerModal
-        isVisible={isDatePickerVisible}
-        mode="date"
-        onConfirm={handleConfirmDate}
-        onCancel={() => setDatePickerVisibility(false)}
-        date={fecha}
-        minimumDate={initialData ? undefined : new Date()}
-      />
+      {Platform.OS !== 'web' && (
+        <>
+          <DateTimePickerModal
+            isVisible={isDatePickerVisible}
+            mode="date"
+            onConfirm={handleConfirmDate}
+            onCancel={() => setDatePickerVisibility(false)}
+            date={fecha}
+            minimumDate={initialData ? undefined : new Date()}
+          />
 
-      <DateTimePickerModal
-        isVisible={isTimePickerVisible}
-        mode="time"
-        onConfirm={handleConfirmTime}
-        onCancel={() => setTimePickerVisibility(false)}
-        date={fecha}
-      />
+          <DateTimePickerModal
+            isVisible={isTimePickerVisible}
+            mode="time"
+            onConfirm={handleConfirmTime}
+            onCancel={() => setTimePickerVisibility(false)}
+            date={fecha}
+          />
+        </>
+      )}
     </Modal>
   );
 };

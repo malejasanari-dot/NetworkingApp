@@ -463,6 +463,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
     padding: 20,
     paddingBottom: 40,
   },

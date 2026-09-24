@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -107,20 +107,27 @@ export default function PerfilScreen() {
   const borderColor = useThemeColor({}, 'border');
 
   const handleLogoutPress = () => {
-    Alert.alert(
-      "Cerrar sesión",
-      "¿Deseas cerrar sesión?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Cerrar sesión", 
-          style: "destructive", 
-          onPress: async () => {
-            await logout();
-          } 
-        }
-      ]
-    );
+    if (Platform.OS === 'web') {
+      const confirmed = typeof window !== 'undefined' && window.confirm ? window.confirm('¿Deseas cerrar sesión?') : true;
+      if (confirmed) {
+        logout();
+      }
+    } else {
+      Alert.alert(
+        "Cerrar sesión",
+        "¿Deseas cerrar sesión?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          { 
+            text: "Cerrar sesión", 
+            style: "destructive", 
+            onPress: async () => {
+              await logout();
+            } 
+          }
+        ]
+      );
+    }
   };
 
   return (
@@ -331,6 +338,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
     padding: 20,
     paddingBottom: 88,
   },

@@ -110,6 +110,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
+    width: '100%',
   },
   headerIcon: {
     marginBottom: 4,
@@ -123,6 +124,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   listContent: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 80,

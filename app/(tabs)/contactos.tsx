@@ -248,76 +248,78 @@ export default function ContactosScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
-      {/* Search Bar & Filter Toggle Button */}
-      <View style={[styles.searchContainer, { backgroundColor: cardColor, borderColor }]}>
-        <Ionicons name="search" size={18} color={secondaryText} style={styles.searchIcon} />
-        <ControlledInput 
-          style={[styles.searchInput, { color: textColor }]}
-          placeholder="Buscar contacto, empresa o etiqueta..."
-          placeholderTextColor={secondaryText}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          selectTextOnFocus={false}
-        />
-        
-        <TouchableOpacity
-          style={[
-            styles.filterIconButton,
-            { backgroundColor: cardColor, borderColor },
-            hasActiveAdvancedFilters && { backgroundColor: primaryColor + '15', borderColor: primaryColor },
-          ]}
-          onPress={() => setModalVisible(true)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityLabel="Filtros avanzados"
-        >
-          <Ionicons 
-            name="options-outline" 
-            size={20} 
-            color={hasActiveAdvancedFilters ? primaryColor : secondaryText} 
+      <View style={styles.topSection}>
+        {/* Search Bar & Filter Toggle Button */}
+        <View style={[styles.searchContainer, { backgroundColor: cardColor, borderColor }]}>
+          <Ionicons name="search" size={18} color={secondaryText} style={styles.searchIcon} />
+          <ControlledInput 
+            style={[styles.searchInput, { color: textColor }]}
+            placeholder="Buscar contacto, empresa o etiqueta..."
+            placeholderTextColor={secondaryText}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            selectTextOnFocus={false}
           />
-          {hasActiveAdvancedFilters && (
-            <View style={[styles.activeFilterBadge, { backgroundColor: primaryColor }]} />
-          )}
-        </TouchableOpacity>
-      </View>
+          
+          <TouchableOpacity
+            style={[
+              styles.filterIconButton,
+              { backgroundColor: cardColor, borderColor },
+              hasActiveAdvancedFilters && { backgroundColor: primaryColor + '15', borderColor: primaryColor },
+            ]}
+            onPress={() => setModalVisible(true)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="Filtros avanzados"
+          >
+            <Ionicons 
+              name="options-outline" 
+              size={20} 
+              color={hasActiveAdvancedFilters ? primaryColor : secondaryText} 
+            />
+            {hasActiveAdvancedFilters && (
+              <View style={[styles.activeFilterBadge, { backgroundColor: primaryColor }]} />
+            )}
+          </TouchableOpacity>
+        </View>
 
-      <CompanyFilterDropdown 
-        value={activeCompanyFilter}
-        onChange={setActiveCompanyFilter}
-      />
+        <CompanyFilterDropdown 
+          value={activeCompanyFilter}
+          onChange={setActiveCompanyFilter}
+        />
 
-      {/* Category Filter Chips (Conocidos, Referidos, Gestionados) */}
-      <View style={styles.filtersContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.filtersScroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          {CONTACT_CATEGORIES.map((cat) => {
-            const isActive = activeCategory === cat;
-            return (
-              <TouchableOpacity 
-                key={cat} 
-                style={[
-                  styles.filterChip, 
-                  { backgroundColor: cardColor, borderColor },
-                  isActive && { backgroundColor: primaryColor, borderColor: primaryColor }
-                ]}
-                onPress={() => handleSelectCategory(cat)}
-                activeOpacity={0.8}
-              >
-                <Text style={[
-                  styles.filterChipText, 
-                  { color: secondaryText },
-                  isActive && { color: '#FFFFFF', fontWeight: 'bold' }
-                ]}>
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        {/* Category Filter Chips (Conocidos, Referidos, Gestionados) */}
+        <View style={styles.filtersContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.filtersScroll}
+            keyboardShouldPersistTaps="handled"
+          >
+            {CONTACT_CATEGORIES.map((cat) => {
+              const isActive = activeCategory === cat;
+              return (
+                <TouchableOpacity 
+                  key={cat} 
+                  style={[
+                    styles.filterChip, 
+                    { backgroundColor: cardColor, borderColor },
+                    isActive && { backgroundColor: primaryColor, borderColor: primaryColor }
+                  ]}
+                  onPress={() => handleSelectCategory(cat)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.filterChipText, 
+                    { color: secondaryText },
+                    isActive && { color: '#FFFFFF', fontWeight: 'bold' }
+                  ]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
       </View>
 
       {/* Contacts List */}
@@ -399,6 +401,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
+  topSection: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -454,6 +461,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   listContent: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 80,

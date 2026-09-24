@@ -111,54 +111,62 @@ export function CustomTabBar({ style }: CustomTabBarProps) {
         style,
       ]}
     >
-      {TABS.map((tab) => {
-        const isFocused = tab.isMatch(pathname);
-        const iconName = isFocused ? tab.iconFocused : tab.iconUnfocused;
-        const color = isFocused ? activeColor : inactiveColor;
+      <View style={styles.innerContainer}>
+        {TABS.map((tab) => {
+          const isFocused = tab.isMatch(pathname);
+          const iconName = isFocused ? tab.iconFocused : tab.iconUnfocused;
+          const color = isFocused ? activeColor : inactiveColor;
 
-        return (
-          <Pressable
-            key={tab.id}
-            onPress={() => handleTabPress(tab, isFocused)}
-            style={({ pressed }) => [
-              styles.tabButton,
-              pressed && styles.tabButtonPressed,
-            ]}
-            android_ripple={{
-              color: 'rgba(0, 0, 0, 0.06)',
-              borderless: true,
-              radius: 28,
-            }}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isFocused }}
-            accessibilityLabel={tab.name}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            <View style={styles.iconWrapper}>
-              <Ionicons name={iconName} size={24} color={color} />
-            </View>
-            <Text
-              style={[
-                styles.tabLabel,
-                { color, fontWeight: isFocused ? '600' : '500' },
+          return (
+            <Pressable
+              key={tab.id}
+              onPress={() => handleTabPress(tab, isFocused)}
+              style={({ pressed }) => [
+                styles.tabButton,
+                pressed && styles.tabButtonPressed,
               ]}
-              numberOfLines={1}
+              android_ripple={{
+                color: 'rgba(0, 0, 0, 0.06)',
+                borderless: true,
+                radius: 28,
+              }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isFocused }}
+              accessibilityLabel={tab.name}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              {tab.name}
-            </Text>
-          </Pressable>
-        );
-      })}
+              <View style={styles.iconWrapper}>
+                <Ionicons name={iconName} size={24} color={color} />
+              </View>
+              <Text
+                style={[
+                  styles.tabLabel,
+                  { color, fontWeight: isFocused ? '600' : '500' },
+                ]}
+                numberOfLines={1}
+              >
+                {tab.name}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
     borderTopWidth: 1,
     paddingTop: 6,
+    width: '100%',
     ...shadowStyle(4, 0.03, 2),
+  },
+  innerContainer: {
+    flexDirection: 'row',
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   tabButton: {
     flex: 1,
