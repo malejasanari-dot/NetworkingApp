@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCompanies } from '../context/CompaniesContext';
 import { useThemeColor } from '../hooks/use-theme-color';
 
@@ -19,6 +20,7 @@ export function CompanySelector({
   label,
   placeholder = "Seleccionar empresa"
 }: CompanySelectorProps) {
+  const insets = useSafeAreaInsets();
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { companies, addCompany } = useCompanies();
@@ -89,7 +91,18 @@ export function CompanySelector({
       </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setModalVisible(false)}>
-        <View style={[styles.modalContainer, { backgroundColor: background }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+        >
+          <View style={[
+            styles.modalContainer, 
+            { 
+              backgroundColor: background,
+              paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 20 : 16),
+              paddingBottom: Math.max(insets.bottom, 16),
+            }
+          ]}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: primaryColor }]}>{label || 'Seleccionar Empresa'}</Text>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -158,7 +171,8 @@ export function CompanySelector({
               );
             }}
           />
-        </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -183,8 +197,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingHorizontal: 20,
   },
   modalHeader: {
     flexDirection: 'row',

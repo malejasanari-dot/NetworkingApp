@@ -171,6 +171,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
     position: 'relative',
+    width: '100%',
   },
   editButton: {
     position: 'absolute',
@@ -194,6 +195,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 4,
     textAlign: 'center',
+    paddingHorizontal: 12,
   },
   sector: {
     fontSize: 18,

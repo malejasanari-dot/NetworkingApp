@@ -10,6 +10,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { Contact } from '../constants/MockData';
+import { shadowStyle } from '../utils/shadow';
 import { useReminders } from '../context/RemindersContext';
 import { useThemeColor } from '../hooks/use-theme-color';
 import { useColorScheme } from '../hooks/use-color-scheme';
@@ -155,11 +156,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
     borderWidth: 1,
   },
   mainRow: {

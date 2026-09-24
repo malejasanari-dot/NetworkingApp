@@ -15,6 +15,7 @@ import * as Sharing from 'expo-sharing';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { useContacts } from '../../context/ContactsContext';
 import { useCompanies } from '../../context/CompaniesContext';
+import { shadowStyle } from '../../utils/shadow';
 
 const escapeCsv = (val?: string | null): string => {
   if (val === undefined || val === null) return '""';
@@ -520,11 +521,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
   },
   disabledCard: {
     opacity: 0.6,

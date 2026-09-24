@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../context/CompaniesContext';
 import { useThemeColor } from '../hooks/use-theme-color';
+import { shadowStyle } from '../utils/shadow';
 
 interface CompanyFilterDropdownProps {
   value: string; // 'ALL', 'NONE', or companyId
@@ -72,7 +73,7 @@ export function CompanyFilterDropdown({ value, onChange }: CompanyFilterDropdown
             <FlatList
               data={filterOptions}
               keyExtractor={item => item.id}
-              style={{ maxHeight: 300 }}
+              style={{ maxHeight: 240 }}
               renderItem={({ item }) => {
                 const isSelected = value === item.id;
                 return (
@@ -133,14 +134,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+    ...shadowStyle(10, 0.1, 20),
   },
   modalHeader: {
     flexDirection: 'row',

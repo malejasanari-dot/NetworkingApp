@@ -8,7 +8,7 @@ import {
   TextInput, 
   KeyboardAvoidingView, 
   Platform, 
-  TouchableWithoutFeedback, 
+  Pressable, 
   Keyboard, 
   Alert,
   ScrollView
@@ -26,6 +26,7 @@ import { useThemeColor } from '../hooks/use-theme-color';
 import { Recordatorio, Contact } from '../constants/MockData';
 import { useContacts } from '../context/ContactsContext';
 import { formatDateString, formatTimeString } from '../utils/date';
+import { shadowStyle } from '../utils/shadow';
 
 interface ReminderModalProps {
   isVisible: boolean;
@@ -185,7 +186,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <Pressable onPress={Keyboard.dismiss}>
         <View style={styles.overlay}>
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -373,7 +374,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
             </Animated.View>
           </KeyboardAvoidingView>
         </View>
-      </TouchableWithoutFeedback>
+      </Pressable>
 
       <DateTimePickerModal
         isVisible={isDatePickerVisible}
@@ -404,21 +405,19 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
     maxHeight: '90%',
   },
   modalContent: {
     borderRadius: 20,
     padding: 22,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 10,
+    ...shadowStyle(10, 0.2, 20),
     maxHeight: '100%',
   },
   scrollArea: {
-    maxHeight: 460,
+    flexShrink: 1,
   },
   header: {
     flexDirection: 'row',
@@ -475,11 +474,11 @@ const styles = StyleSheet.create({
   contactsListContainer: {
     borderRadius: 10,
     borderWidth: 1,
-    maxHeight: 130,
+    maxHeight: 110,
     overflow: 'hidden',
   },
   contactsScroll: {
-    maxHeight: 130,
+    maxHeight: 110,
   },
   contactItem: {
     flexDirection: 'row',
@@ -569,11 +568,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 28,
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    ...shadowStyle(3, 0.15, 4),
   },
   disabledButton: {
     opacity: 0.45,

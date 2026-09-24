@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Text, Animated, TouchableOpacity, Platform } from 'react-native';
+import { StyleSheet, Text, Animated, TouchableOpacity, Platform, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColor } from '../hooks/use-theme-color';
+import { shadowStyle } from '../utils/shadow';
 
 export type ToastType = 'success' | 'error' | 'info';
 
@@ -32,12 +33,12 @@ export const Toast: React.FC<ToastProps> = React.memo(({ data, onDismiss }) => {
         Animated.timing(translateY, {
           toValue: 0,
           duration: 250,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(opacity, {
           toValue: 1,
           duration: 250,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ]).start();
     } else {
@@ -45,12 +46,12 @@ export const Toast: React.FC<ToastProps> = React.memo(({ data, onDismiss }) => {
         Animated.timing(translateY, {
           toValue: -100,
           duration: 200,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(opacity, {
           toValue: 0,
           duration: 200,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ]).start();
     }
@@ -74,47 +75,49 @@ export const Toast: React.FC<ToastProps> = React.memo(({ data, onDismiss }) => {
   const topOffset = Math.max(insets.top + 8, Platform.OS === 'ios' ? 44 : 16);
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          top: topOffset,
-          transform: [{ translateY }],
-          opacity,
-          backgroundColor: cardColor,
-          borderColor: color,
-        },
-      ]}
-      pointerEvents="box-none"
-    >
-      <TouchableOpacity
-        style={styles.content}
-        onPress={onDismiss}
-        activeOpacity={0.8}
+    <View style={[styles.overlay, { top: topOffset, pointerEvents: 'box-none' } as any]}>
+      <Animated.View
+        style={[
+          styles.container,
+          {
+            transform: [{ translateY }],
+            opacity,
+            backgroundColor: cardColor,
+            borderColor: color,
+          },
+        ]}
       >
-        <Ionicons name={icon} size={22} color={color} style={styles.icon} />
-        <Text style={[styles.message, { color: textColor }]} numberOfLines={2}>
-          {data.message}
-        </Text>
-        <Ionicons name="close" size={18} color={textColor} style={styles.closeIcon} />
-      </TouchableOpacity>
-    </Animated.View>
+        <TouchableOpacity
+          style={styles.content}
+          onPress={onDismiss}
+          activeOpacity={0.8}
+        >
+          <Ionicons name={icon} size={22} color={color} style={styles.icon} />
+          <Text style={[styles.message, { color: textColor }]} numberOfLines={2}>
+            {data.message}
+          </Text>
+          <Ionicons name="close" size={18} color={textColor} style={styles.closeIcon} />
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
   );
 });
 
 const styles = StyleSheet.create({
-  container: {
+  overlay: {
     position: 'absolute',
-    left: 20,
-    right: 20,
+    left: 0,
+    right: 0,
     zIndex: 9999,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  container: {
+    width: '100%',
+    maxWidth: 440,
     borderRadius: 14,
     borderWidth: 1.5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
+    ...shadowStyle(6, 0.15, 8),
   },
   content: {
     flexDirection: 'row',

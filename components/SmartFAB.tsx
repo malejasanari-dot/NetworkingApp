@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Pressable, Platform, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import Animated, {
   withTiming 
 } from 'react-native-reanimated';
 import { useThemeColor } from '../hooks/use-theme-color';
+import { shadowStyle } from '../utils/shadow';
 
 export interface SmartFABProps {
   onAddContact: () => void;
@@ -36,7 +37,10 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
   const accent1 = useThemeColor({}, 'accent1');
   const accent2 = useThemeColor({}, 'accent2');
 
-  const bottomOffset = insets.bottom + (Platform.OS === 'ios' ? 70 : 64);
+  const { height: windowHeight } = useWindowDimensions();
+  const isCompactHeight = windowHeight < 420;
+
+  const bottomOffset = insets.bottom + (isCompactHeight ? (Platform.OS === 'ios' ? 56 : 50) : (Platform.OS === 'ios' ? 70 : 64));
   const animationProgress = useSharedValue(0);
 
   useEffect(() => {
@@ -90,67 +94,70 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
   return (
     <>
       {isOpen && (
-        <TouchableWithoutFeedback onPress={() => setIsOpen(false)}>
+        <Pressable
+          onPress={() => setIsOpen(false)}
+          style={StyleSheet.absoluteFill}
+        >
           <Animated.View style={[styles.backdrop, backdropAnimatedStyle]} />
-        </TouchableWithoutFeedback>
+        </Pressable>
       )}
 
-      <View style={[styles.container, { bottom: bottomOffset }]} pointerEvents="box-none">
+      <View style={[styles.container, { bottom: bottomOffset, pointerEvents: 'box-none' } as any]}>
         {isOpen && (
-          <Animated.View style={[styles.menuContainer, menuAnimatedStyle]}>
+          <Animated.View style={[styles.menuContainer, isCompactHeight && styles.menuContainerCompact, menuAnimatedStyle]}>
             <TouchableOpacity
-              style={[styles.menuItem, { backgroundColor: cardColor, borderColor }]}
+              style={[styles.menuItem, isCompactHeight && styles.menuItemCompact, { backgroundColor: cardColor, borderColor }]}
               onPress={() => handleAction(onAddContact)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.menuLabel, { color: textColor }]}>Nuevo Contacto</Text>
-              <View style={[styles.iconCircle, { backgroundColor: primaryColor + '15' }]}>
-                <Ionicons name="person-add-outline" size={20} color={primaryColor} />
+              <Text style={[styles.menuLabel, isCompactHeight && styles.menuLabelCompact, { color: textColor }]}>Nuevo Contacto</Text>
+              <View style={[styles.iconCircle, isCompactHeight && styles.iconCircleCompact, { backgroundColor: primaryColor + '15' }]}>
+                <Ionicons name="person-add-outline" size={isCompactHeight ? 17 : 20} color={primaryColor} />
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.menuItem, { backgroundColor: cardColor, borderColor }]}
+              style={[styles.menuItem, isCompactHeight && styles.menuItemCompact, { backgroundColor: cardColor, borderColor }]}
               onPress={() => handleAction(onAddCompany)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.menuLabel, { color: textColor }]}>Nueva Empresa</Text>
-              <View style={[styles.iconCircle, { backgroundColor: accent1 + '15' }]}>
-                <Ionicons name="business-outline" size={20} color={accent1} />
+              <Text style={[styles.menuLabel, isCompactHeight && styles.menuLabelCompact, { color: textColor }]}>Nueva Empresa</Text>
+              <View style={[styles.iconCircle, isCompactHeight && styles.iconCircleCompact, { backgroundColor: accent1 + '15' }]}>
+                <Ionicons name="business-outline" size={isCompactHeight ? 17 : 20} color={accent1} />
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.menuItem, { backgroundColor: cardColor, borderColor }]}
+              style={[styles.menuItem, isCompactHeight && styles.menuItemCompact, { backgroundColor: cardColor, borderColor }]}
               onPress={() => handleAction(onAddReminder)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.menuLabel, { color: textColor }]}>Nuevo Recordatorio</Text>
-              <View style={[styles.iconCircle, { backgroundColor: accent2 + '15' }]}>
-                <Ionicons name="notifications-outline" size={20} color={accent2} />
+              <Text style={[styles.menuLabel, isCompactHeight && styles.menuLabelCompact, { color: textColor }]}>Nuevo Recordatorio</Text>
+              <View style={[styles.iconCircle, isCompactHeight && styles.iconCircleCompact, { backgroundColor: accent2 + '15' }]}>
+                <Ionicons name="notifications-outline" size={isCompactHeight ? 17 : 20} color={accent2} />
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.menuItem, { backgroundColor: cardColor, borderColor }]}
+              style={[styles.menuItem, isCompactHeight && styles.menuItemCompact, { backgroundColor: cardColor, borderColor }]}
               onPress={() => handleAction(onSyncContacts)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.menuLabel, { color: textColor }]}>Sincronizar contactos</Text>
-              <View style={[styles.iconCircle, { backgroundColor: primaryColor + '15' }]}>
-                <Ionicons name="sync-outline" size={20} color={primaryColor} />
+              <Text style={[styles.menuLabel, isCompactHeight && styles.menuLabelCompact, { color: textColor }]}>Sincronizar contactos</Text>
+              <View style={[styles.iconCircle, isCompactHeight && styles.iconCircleCompact, { backgroundColor: primaryColor + '15' }]}>
+                <Ionicons name="sync-outline" size={isCompactHeight ? 17 : 20} color={primaryColor} />
               </View>
             </TouchableOpacity>
           </Animated.View>
         )}
 
         <TouchableOpacity
-          style={[styles.fabButton, { backgroundColor: primaryColor }]}
+          style={[styles.fabButton, isCompactHeight && styles.fabButtonCompact, { backgroundColor: primaryColor }]}
           onPress={toggleMenu}
           activeOpacity={0.85}
         >
           <Animated.View style={fabIconAnimatedStyle}>
-            <Ionicons name="add" size={28} color="#FFFFFF" />
+            <Ionicons name="add" size={isCompactHeight ? 24 : 28} color="#FFFFFF" />
           </Animated.View>
         </TouchableOpacity>
       </View>
@@ -175,6 +182,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 6,
   },
+  menuContainerCompact: {
+    marginBottom: 4,
+    gap: 3,
+  },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -182,16 +193,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     borderRadius: 18,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    ...shadowStyle(4, 0.12, 6),
+  },
+  menuItemCompact: {
+    paddingVertical: 3,
+    paddingHorizontal: 9,
+    borderRadius: 15,
   },
   menuLabel: {
     fontSize: 13,
     fontWeight: '600',
     marginRight: 8,
+  },
+  menuLabelCompact: {
+    fontSize: 12,
+    marginRight: 6,
   },
   iconCircle: {
     width: 30,
@@ -200,16 +216,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  iconCircleCompact: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+  },
   fabButton: {
     width: 56,
     height: 56,
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
+    ...shadowStyle(6, 0.25, 8),
+  },
+  fabButtonCompact: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
 });

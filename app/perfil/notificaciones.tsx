@@ -12,10 +12,11 @@ import { useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { useNotifications, PermissionStatus } from '../../hooks/useNotifications';
+import { shadowStyle } from '../../utils/shadow';
 
 export default function NotificacionesScreen() {
   const navigation = useNavigation();
-  const { permissionStatus, requestPermission } = useNotifications();
+  const { permissionStatus, requestPermission, isAvailable } = useNotifications();
 
   // Colores del sistema de temas existente
   const backgroundColor = useThemeColor({}, 'background');
@@ -79,8 +80,29 @@ export default function NotificacionesScreen() {
         </Text>
       </View>
 
+      {/* Aviso: Expo Go no soporta notificaciones nativas */}
+      {!isAvailable && (
+        <View style={[styles.card, { backgroundColor: cardColor, borderColor, marginBottom: 16 }]}>
+          <View style={styles.switchRow}>
+            <View style={styles.switchLeft}>
+              <View style={[styles.iconBadge, { backgroundColor: accent2 + '15' }]}>
+                <Ionicons name="information-circle-outline" size={20} color={accent2} />
+              </View>
+              <View style={styles.switchTextContainer}>
+                <Text style={[styles.switchTitle, { color: textColor }]}>
+                  Notificaciones no disponibles
+                </Text>
+                <Text style={[styles.switchSubtitle, { color: secondaryText }]}>
+                  Las notificaciones push requieren una versión instalada de la aplicación (Development Build o APK). En Expo Go esta funcionalidad no está disponible.
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* 2. Interruptor General */}
-      <View style={[styles.card, { backgroundColor: cardColor, borderColor }]}>
+      <View style={[styles.card, { backgroundColor: cardColor, borderColor }, !isAvailable && styles.disabledCard]}>
         <View style={styles.switchRow}>
           <View style={styles.switchLeft}>
             <View style={[styles.iconBadge, { backgroundColor: primaryColor + '12' }]}>
@@ -104,6 +126,7 @@ export default function NotificacionesScreen() {
           <Switch
             value={generalEnabled}
             onValueChange={handleToggleGeneral}
+            disabled={!isAvailable}
             trackColor={{ false: borderColor, true: primaryColor }}
             thumbColor={
               Platform.OS === 'android'
@@ -318,11 +341,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
   },
   disabledCard: {
     opacity: 0.55,

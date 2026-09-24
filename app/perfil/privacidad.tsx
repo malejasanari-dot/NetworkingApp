@@ -13,6 +13,7 @@ import {
 import { useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from '../../hooks/use-theme-color';
+import { shadowStyle } from '../../utils/shadow';
 
 export default function PrivacidadSeguridadScreen() {
   const navigation = useNavigation();
@@ -271,11 +272,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
   },
   dangerCard: {
     marginTop: 8,
@@ -320,11 +317,7 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    ...shadowStyle(8, 0.25, 12),
   },
   modalIconBadge: {
     width: 64,
@@ -353,11 +346,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
+    ...shadowStyle(2, 0.15, 4),
   },
   deleteButtonText: {
     color: '#FFFFFF',

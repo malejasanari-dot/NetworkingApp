@@ -23,6 +23,7 @@ import { CATEGORY_COLORS, CATEGORY_COLORS_DARK } from '../../constants/categorie
 import { useColorScheme } from '../../hooks/use-color-scheme';
 
 import { useToast } from '../../context/ToastContext';
+import { shadowStyle } from '../../utils/shadow';
 
 export default function ContactDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -103,9 +104,26 @@ export default function ContactDetailScreen() {
     }
   };
 
+  const handleToggleCompleteReminder = useCallback(async (reminder: Recordatorio) => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    const newStatus = !reminder.completado;
+    await updateReminder(reminder.id, { completado: newStatus }, contact?.name);
+    if (newStatus) {
+      toast.success('Recordatorio completado');
+    } else {
+      toast.info('Recordatorio reactivado');
+    }
+  }, [updateReminder, contact?.name, toast]);
+
   const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string; contactIds: string[] }) => {
     if (editingReminder) {
-      await updateReminder(editingReminder.id, { fecha: data.fecha, nota: data.nota });
+      await updateReminder(
+        editingReminder.id, 
+        { fecha: data.fecha, nota: data.nota },
+        contact?.name
+      );
       toast.success('Recordatorio actualizado');
     } else {
       for (const contactId of data.contactIds) {
@@ -113,11 +131,12 @@ export default function ContactDetailScreen() {
           contactoId: contactId,
           fecha: data.fecha,
           nota: data.nota,
-        });
+          completado: false,
+        }, contact?.name);
       }
       toast.success('Recordatorio guardado');
     }
-  }, [editingReminder, updateReminder, addReminder, toast]);
+  }, [editingReminder, updateReminder, addReminder, contact?.name, toast]);
 
   const handleAddOrUpdateNote = async () => {
     const trimmedContent = newNoteContent.trim();
@@ -323,25 +342,84 @@ export default function ContactDetailScreen() {
             </TouchableOpacity>
           </View>
 
-          {contactReminders.map(reminder => (
-            <View key={reminder.id} style={[styles.reminderItem, { backgroundColor: cardColor, borderColor }]}>
-              <View style={styles.reminderContent}>
-                <View style={styles.reminderTop}>
-                  <Ionicons name="notifications-outline" size={16} color={accent1} />
-                  <Text style={[styles.reminderDate, { color: accent1 }]}>{formatDate(reminder.fecha)}</Text>
+          {contactReminders.map(reminder => {
+            const isCompleted = Boolean(reminder.completado);
+            return (
+              <View 
+                key={reminder.id} 
+                style={[
+                  styles.reminderItem, 
+                  { 
+                    backgroundColor: cardColor, 
+                    borderColor: isCompleted ? '#10B98135' : borderColor,
+                    opacity: isCompleted ? 0.75 : 1,
+                  }
+                ]}
+              >
+                <View style={styles.reminderContent}>
+                  <View style={styles.reminderTop}>
+                    <Ionicons 
+                      name={isCompleted ? "checkmark-circle" : "notifications-outline"} 
+                      size={16} 
+                      color={isCompleted ? "#10B981" : accent1} 
+                    />
+                    <Text 
+                      style={[
+                        styles.reminderDate, 
+                        { color: isCompleted ? "#10B981" : accent1 }
+                      ]}
+                    >
+                      {formatDate(reminder.fecha)}
+                    </Text>
+                    {isCompleted && (
+                      <View style={styles.completedBadge}>
+                        <Text style={styles.completedBadgeText}>Completado</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text 
+                    style={[
+                      styles.reminderNote, 
+                      { 
+                        color: isCompleted ? secondaryText : textColor,
+                        textDecorationLine: isCompleted ? 'line-through' : 'none',
+                      }
+                    ]}
+                  >
+                    {reminder.nota || 'Sin nota'}
+                  </Text>
                 </View>
-                <Text style={[styles.reminderNote, { color: textColor }]}>{reminder.nota || 'Sin nota'}</Text>
+                <View style={styles.reminderActions}>
+                  <TouchableOpacity 
+                    onPress={() => handleToggleCompleteReminder(reminder)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.7}
+                    accessibilityLabel={isCompleted ? "Marcar como pendiente" : "Marcar como completado"}
+                  >
+                    <Ionicons 
+                      name={isCompleted ? "checkmark-circle" : "checkmark-circle-outline"} 
+                      size={22} 
+                      color="#10B981" 
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => openEditReminder(reminder)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="create-outline" size={20} color={secondaryText} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => handleDeleteReminder(reminder.id)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="trash-outline" size={20} color={accent2} />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View style={styles.reminderActions}>
-                <TouchableOpacity onPress={() => openEditReminder(reminder)}>
-                  <Ionicons name="create-outline" size={20} color={secondaryText} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDeleteReminder(reminder.id)}>
-                  <Ionicons name="trash-outline" size={20} color={accent2} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
+            );
+          })}
 
           {contactReminders.length === 0 && (
             <Text style={[styles.noDataText, { color: secondaryText }]}>No hay recordatorios configurados.</Text>
@@ -473,6 +551,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
     position: 'relative',
+    width: '100%',
   },
   headerActions: {
     position: 'absolute',
@@ -503,6 +582,8 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: 'bold',
     marginBottom: 4,
+    textAlign: 'center',
+    paddingHorizontal: 12,
   },
   company: {
     fontSize: 16,
@@ -666,11 +747,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
+    ...shadowStyle(2, 0.05, 5),
   },
   reminderContent: {
     flex: 1,
@@ -690,8 +767,20 @@ const styles = StyleSheet.create({
   },
   reminderActions: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 16,
     marginLeft: 16,
+  },
+  completedBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  completedBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#10B981',
   },
   deleteButton: {
     flexDirection: 'row',

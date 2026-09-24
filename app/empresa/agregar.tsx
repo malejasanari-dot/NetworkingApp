@@ -7,6 +7,7 @@ import { useCompanies } from '../../context/CompaniesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 
 import { useToast } from '../../context/ToastContext';
+import { shadowStyle } from '../../utils/shadow';
 
 export default function AgregarEmpresaScreen() {
   const router = useRouter();
@@ -211,6 +212,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
     padding: 24,
     paddingBottom: 60,
   },
@@ -265,11 +269,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    ...shadowStyle(4, 0.2, 8),
   },
   saveButtonDisabled: {
     opacity: 0.7,

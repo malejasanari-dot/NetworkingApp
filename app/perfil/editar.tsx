@@ -20,6 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { useToast } from '../../context/ToastContext';
 import { MOCK_PROFILE } from '../../constants/MockData';
+import { shadowStyle } from '../../utils/shadow';
 
 export default function EditarPerfilScreen() {
   const router = useRouter();
@@ -437,11 +438,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
+    ...shadowStyle(3, 0.2, 2),
   },
   changePhotoTextButton: {
     paddingVertical: 6,
@@ -497,11 +494,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    ...shadowStyle(2, 0.1, 4),
   },
   saveButtonText: {
     color: '#FFFFFF',

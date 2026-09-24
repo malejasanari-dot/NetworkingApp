@@ -18,6 +18,7 @@ import {
   RemindersFilterType,
   CompanyRelationFilterType,
 } from '../../components/AdvancedFilterModal';
+import { shadowStyle } from '../../utils/shadow';
 
 export default function ContactosScreen() {
   const router = useRouter();
@@ -408,11 +409,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     height: 44,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
+    ...shadowStyle(1, 0.03, 3),
   },
   searchIcon: {
     marginRight: 8,

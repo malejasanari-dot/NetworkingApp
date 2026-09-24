@@ -11,18 +11,22 @@ import {
   ScrollView,
   Image,
   Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useThemeColor } from '../hooks/use-theme-color';
+import { shadowStyle } from '../utils/shadow';
 
 const PRIVACY_POLICY_URL = 'https://crn.lhh.com/#/public/privacypolicypg/193';
 
 export default function LoginScreen() {
   const { login } = useAuth();
   const toast = useToast();
+  const { height: windowHeight } = useWindowDimensions();
+  const isCompactHeight = windowHeight < 700;
 
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [acceptedCheckbox, setAcceptedCheckbox] = useState(false);
@@ -92,10 +96,10 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Header Identity with LHH Logo */}
-          <View style={styles.header}>
+          <View style={[styles.header, isCompactHeight && { marginBottom: 14 }]}>
             <Image
               source={require('../assets/images/lhh-logo.png')}
-              style={styles.lhhLogo}
+              style={[styles.lhhLogo, isCompactHeight && styles.lhhLogoCompact]}
               resizeMode="contain"
             />
             <Text style={[styles.title, { color: primaryColor }]}>NetworkingApp 2.0</Text>
@@ -268,16 +272,24 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingVertical: 20,
   },
   header: {
     alignItems: 'center',
     marginBottom: 24,
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
   },
   lhhLogo: {
     width: 165,
     height: 75,
     marginBottom: 20,
+  },
+  lhhLogoCompact: {
+    width: 135,
+    height: 60,
+    marginBottom: 12,
   },
   title: {
     fontSize: 26,
@@ -290,14 +302,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
     borderRadius: 20,
     padding: 22,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+    ...shadowStyle(3, 0.08, 12),
   },
   cardTitle: {
     fontSize: 16,

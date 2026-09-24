@@ -7,6 +7,7 @@ import { useCompanies, Company } from '../../context/CompaniesContext';
 import { useContacts } from '../../context/ContactsContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { ThemeToggleButton } from '../../components/ThemeToggleButton';
+import { shadowStyle } from '../../utils/shadow';
 
 export default function EmpresasScreen() {
   const router = useRouter();
@@ -221,11 +222,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 8,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
   },
   avatarContainer: {
     width: 38,

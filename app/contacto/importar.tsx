@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, 
 import { Contact, ContactField, requestPermissionsAsync } from 'expo-contacts';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useContacts } from '../../context/ContactsContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 
@@ -12,6 +13,7 @@ export default function ImportarContactosScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
   const { importContacts } = useContacts();
   const [deviceContacts, setDeviceContacts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -227,7 +229,7 @@ export default function ImportarContactosScreen() {
         }
       />
 
-      <View style={[styles.footer, { borderTopColor: borderColor }]}>
+      <View style={[styles.footer, { borderTopColor: borderColor, paddingBottom: Math.max(insets.bottom, 20) }]}>
         <TouchableOpacity 
           style={[
             styles.importButton, 

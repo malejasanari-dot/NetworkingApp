@@ -13,6 +13,7 @@ import { formatDate } from '../../utils/date';
 import { MOCK_PROFILE } from '../../constants/MockData';
 import { StatsDonutChart } from '../../components/StatsDonutChart';
 import { CategoryDistributionBar } from '../../components/CategoryDistributionBar';
+import { shadowStyle } from '../../utils/shadow';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -231,8 +232,9 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* 1. Encabezado elegante y compacto */}
-        <View style={styles.userHeader}>
+        <View style={styles.innerContainer}>
+          {/* 1. Encabezado elegante y compacto */}
+          <View style={styles.userHeader}>
           <View style={[styles.avatar, { backgroundColor: primaryColor + '15', borderColor: primaryColor }]}>
             {profile?.avatar_url ? (
               <Image
@@ -455,6 +457,7 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -468,6 +471,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 80,
+  },
+  innerContainer: {
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
   },
   userHeader: {
     flexDirection: 'row',
@@ -508,11 +516,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
   },
   healthCardTitle: {
     fontSize: 16,
@@ -583,11 +587,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
   },
   distributionTitle: {
     fontSize: 16,
@@ -619,11 +619,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 8,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
   },
   compactAvatar: {
     width: 36,
@@ -679,11 +675,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderLeftWidth: 3.5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
     alignItems: 'center',
   },
   reminderIcon: {

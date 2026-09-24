@@ -6,7 +6,8 @@ import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useNotifications } from '@/hooks/useNotifications';
+// Side-effect: configura el handler de notificaciones en foreground
+import '@/hooks/useNotifications';
 import { ContactsProvider } from '@/context/ContactsContext';
 import { CompaniesProvider } from '@/context/CompaniesContext';
 import { RemindersProvider } from '@/context/RemindersContext';
@@ -26,7 +27,7 @@ function RootLayoutContent() {
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const { requestPermission } = useNotifications();
+
 
   useEffect(() => {
     if (loading) return;
@@ -40,12 +41,7 @@ function RootLayoutContent() {
     }
   }, [user, loading, segments, router]);
 
-  // Solicitar permisos de notificaciones una vez que el usuario está autenticado
-  useEffect(() => {
-    if (!loading && user) {
-      requestPermission();
-    }
-  }, [loading, user, requestPermission]);
+
 
   const activeThemeKey = colorScheme === 'dark' ? 'dark' : 'light';
   const themeColors = Colors[activeThemeKey];

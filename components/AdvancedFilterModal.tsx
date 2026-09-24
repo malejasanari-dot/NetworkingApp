@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColor } from '../hooks/use-theme-color';
+import { shadowStyle } from '../utils/shadow';
 
 export type FavoritesFilterType = 'all' | 'only_favorites';
 export type RemindersFilterType = 'all' | 'with_reminders' | 'without_reminders';
@@ -42,6 +44,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
   setCompanyRelationFilter,
   onResetFilters,
 }) => {
+  const insets = useSafeAreaInsets();
   const cardColor = useThemeColor({}, 'card');
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
@@ -342,7 +345,7 @@ export const AdvancedFilterModal: React.FC<AdvancedFilterModalProps> = ({
           </ScrollView>
 
           {/* Footer Actions */}
-          <View style={[styles.footer, { borderTopColor: borderColor }]}>
+          <View style={[styles.footer, { borderTopColor: borderColor, paddingBottom: Math.max(insets.bottom, 16) }]}>
             {hasAdvancedFilters && (
               <TouchableOpacity style={[styles.resetButton, { borderColor }]} onPress={onResetFilters}>
                 <Ionicons name="refresh-outline" size={16} color={secondaryText} style={{ marginRight: 4 }} />
@@ -367,15 +370,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
+    width: '100%',
+    maxWidth: 540,
+    alignSelf: 'center',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
     maxHeight: '85%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    ...shadowStyle(8, 0.15, 12),
   },
   header: {
     flexDirection: 'row',
@@ -397,7 +399,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   contentScroll: {
-    maxHeight: 450,
+    flexShrink: 1,
   },
   contentContainer: {
     padding: 20,

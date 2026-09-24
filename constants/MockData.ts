@@ -17,6 +17,8 @@ export interface Recordatorio {
   contactoId: string;
   fecha: string; // ISO String
   nota: string;
+  completado?: boolean;
+  notificacionId?: string;
 }
 
 export interface Nota {

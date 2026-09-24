@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from '../hooks/use-theme-color';
 import { formatDate } from '../utils/date';
+import { shadowStyle } from '../utils/shadow';
 
 export interface ActivityItem {
   id: string;
@@ -91,11 +92,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 14,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
+    ...shadowStyle(2, 0.04, 4),
   },
   iconCircle: {
     width: 36,

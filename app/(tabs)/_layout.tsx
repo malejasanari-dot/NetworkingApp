@@ -64,13 +64,15 @@ export default function TabLayout() {
 
   const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string; contactIds: string[] }) => {
     for (const contactId of data.contactIds) {
+      const contactObj = (contacts || []).find(c => c && c.id === contactId);
       await addReminder({
         contactoId: contactId,
         fecha: data.fecha,
         nota: data.nota,
-      });
+        completado: false,
+      }, contactObj?.name);
     }
-  }, [addReminder]);
+  }, [addReminder, contacts]);
 
   const handleTabSwipe = useCallback((direction: 'left' | 'right') => {
     const currentIndex = getCurrentTabIndex(pathname);

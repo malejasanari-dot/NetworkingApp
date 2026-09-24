@@ -10,6 +10,7 @@ import { parseTags, formatTags } from '../../../utils/tags';
 import { CONTACT_CATEGORIES, ContactCategory } from '../../../constants/categories';
 
 import { useToast } from '../../../context/ToastContext';
+import { shadowStyle } from '../../../utils/shadow';
 
 export default function EditarScreen() {
   const router = useRouter();
@@ -267,11 +268,15 @@ export default function EditarScreen() {
                   ]}
                   onPress={() => setCategoria(isActive ? undefined : cat)}
                 >
-                  <Text style={[
-                    styles.categoryChipText,
-                    { color: primaryColor },
-                    isActive && { color: '#FFFFFF' },
-                  ]}>
+                  <Text 
+                    style={[
+                      styles.categoryChipText,
+                      { color: primaryColor },
+                      isActive && { color: '#FFFFFF' },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
                     {cat}
                   </Text>
                 </TouchableOpacity>
@@ -320,6 +325,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
     padding: 20,
     paddingBottom: 60,
   },
@@ -355,11 +363,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 32,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
+    ...shadowStyle(2, 0.05, 5),
   },
   switchLabel: {
     fontSize: 16,
@@ -374,11 +378,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    ...shadowStyle(4, 0.15, 8),
   },
   saveButtonText: {
     color: '#FFFFFF',
@@ -415,17 +415,22 @@ const styles = StyleSheet.create({
   },
   categoryRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   categoryChip: {
     flex: 1,
-    paddingVertical: 12,
+    minWidth: 90,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
     borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   categoryChipText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
+    textAlign: 'center',
   },
 });

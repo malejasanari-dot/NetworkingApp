@@ -64,9 +64,16 @@ CREATE TABLE IF NOT EXISTS public.reminders (
   contacto_id TEXT NOT NULL REFERENCES public.contacts(id) ON DELETE CASCADE,
   fecha TIMESTAMPTZ NOT NULL,
   nota TEXT NOT NULL,
+  completado BOOLEAN DEFAULT FALSE,
+  notificacion_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migración para tablas existentes:
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS completado BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS notificacion_id TEXT;
+
 
 -- ==============================================================================
 -- TRIGGER PARA CREACIÓN AUTOMÁTICA DE PERFIL AL REGISTRAR UN USUARIO EN AUTH

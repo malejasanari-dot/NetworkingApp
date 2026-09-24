@@ -10,6 +10,7 @@ import { useNotes } from '../../context/NotesContext';
 import { useReminders } from '../../context/RemindersContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { useAuth } from '../../context/AuthContext';
+import { shadowStyle } from '../../utils/shadow';
 
 export default function PerfilScreen() {
   const router = useRouter();
@@ -52,14 +53,9 @@ export default function PerfilScreen() {
     return recentContactsCount + recentNotesCount + recentRemindersCount;
   }, [contacts, notes, reminders]);
 
-  // 4. Completados (recordatorios con fecha <= now)
+  // 4. Completados (recordatorios marcados explícitamente como completados)
   const completedRemindersCount = useMemo(() => {
-    const now = new Date().getTime();
-    return (reminders || []).filter(r => {
-      if (!r || !r.fecha) return false;
-      const t = new Date(r.fecha).getTime();
-      return !isNaN(t) && t <= now;
-    }).length;
+    return (reminders || []).filter(r => Boolean(r && r.completado)).length;
   }, [reminders]);
 
   // 5. Contactos activos (contactos con al menos una nota o recordatorio asociado)
@@ -336,7 +332,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 88,
   },
   header: {
     alignItems: 'center',
@@ -390,11 +386,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     alignItems: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
   },
   iconBadge: {
     width: 36,
@@ -417,11 +409,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
   },
   performanceItem: {
     paddingVertical: 12,
@@ -470,11 +458,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    ...shadowStyle(1, 0.04, 4),
   },
   menuTitle: {
     fontSize: 16,

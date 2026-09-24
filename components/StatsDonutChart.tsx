@@ -32,7 +32,7 @@ export const StatsDonutChart: React.FC<StatsDonutChartProps> = React.memo(({
     <View style={styles.container}>
       <View style={[styles.chartWrapper, { width: size, height: size }]}>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <G rotation="-90" origin={`${center}, ${center}`}>
+          <G transform={`rotate(-90, ${center}, ${center})`}>
             {/* Base Background Track Circle */}
             <Circle
               cx={center}
@@ -62,7 +62,7 @@ export const StatsDonutChart: React.FC<StatsDonutChartProps> = React.memo(({
         </Svg>
 
         {/* Center Indicator: ÚNICAMENTE el porcentaje */}
-        <View style={styles.centerTextWrapper} pointerEvents="none">
+        <View style={[styles.centerTextWrapper, { pointerEvents: 'none' } as any]}>
           <Text style={[styles.centerText, { color: primaryColor }]}>{compPct}%</Text>
         </View>
       </View>

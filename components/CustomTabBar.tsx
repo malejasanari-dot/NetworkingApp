@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColor } from '../hooks/use-theme-color';
+import { shadowStyle } from '../utils/shadow';
 
 interface TabItem {
   id: string;
@@ -157,15 +158,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 1,
     paddingTop: 6,
-    height: Platform.select({
-      ios: undefined,
-      default: 58,
-    }),
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
-    elevation: 4,
+    ...shadowStyle(4, 0.03, 2),
   },
   tabButton: {
     flex: 1,
