@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.anonymous.personalnetworkingapp'
+    namespace 'networking.app.lhh'
     defaultConfig {
-        applicationId 'com.anonymous.personalnetworkingapp'
+        applicationId 'networking.app.lhh'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

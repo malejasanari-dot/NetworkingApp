@@ -1,4 +1,4 @@
-package com.anonymous.personalnetworkingapp
+package networking.app.lhh
 
 import android.app.Application
 import android.content.res.Configuration

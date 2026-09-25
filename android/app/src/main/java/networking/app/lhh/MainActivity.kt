@@ -1,4 +1,4 @@
-package com.anonymous.personalnetworkingapp
+package networking.app.lhh
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
