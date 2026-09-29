@@ -12,7 +12,7 @@ on:
 # ============================================================
 env:
   BUILD_AAB: "true"
-  BUILD_APK: "false"
+  BUILD_APK: "true"
 
 permissions:
   contents: read

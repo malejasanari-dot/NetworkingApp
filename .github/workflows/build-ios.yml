@@ -21,7 +21,7 @@ on:
 # Para activar/desactivar la compilación IPA, cambiar a "true" o "false"
 # ============================================================
 env:
-  BUILD_IPA: "false"
+  BUILD_IPA: "true"
 
 permissions:
   contents: read
