@@ -16,6 +16,13 @@ on:
     branches:
       - main
 
+# ============================================================
+# Configuración de formatos a compilar
+# Para activar/desactivar la compilación IPA, cambiar a "true" o "false"
+# ============================================================
+env:
+  BUILD_IPA: "false"
+
 permissions:
   contents: read
   pages: write
@@ -34,7 +41,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check if IPA build is enabled
+        run: |
+          echo "==================== ESTADO COMPILACIÓN IOS ===================="
+          echo "BUILD_IPA: ${{ env.BUILD_IPA }}"
+          if [ "${{ env.BUILD_IPA }}" != "true" ]; then
+            echo "La compilación de IPA está DESACTIVADA (BUILD_IPA='false')."
+            echo "Se omitirán los pasos de compilación y publicación."
+          else
+            echo "La compilación de IPA está ACTIVADA (BUILD_IPA='true')."
+          fi
+          echo "================================================================"
+
       - name: Environment Diagnostics
+        if: env.BUILD_IPA == 'true'
         run: |
           echo "==================== DIAGNÓSTICO PREVIO ===================="
           echo "macOS: $(sw_vers -productName) $(sw_vers -productVersion) ($(sw_vers -buildVersion))"
@@ -46,18 +66,21 @@ jobs:
           echo "============================================================"
 
       - name: Setup Node.js 22
+        if: env.BUILD_IPA == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: "npm"
 
       - name: Setup Expo & EAS CLI
+        if: env.BUILD_IPA == 'true'
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Verify EXPO_TOKEN
+        if: env.BUILD_IPA == 'true'
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
@@ -69,9 +92,11 @@ jobs:
           eas whoami
 
       - name: Install dependencies
+        if: env.BUILD_IPA == 'true'
         run: npm ci --legacy-peer-deps
 
       - name: Build IPA locally with EAS
+        if: env.BUILD_IPA == 'true'
         id: eas-build-local
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
@@ -101,6 +126,7 @@ jobs:
           fi
 
       - name: Verify IPA Artifact
+        if: env.BUILD_IPA == 'true'
         run: |
           if [ ! -s build/ipa/NetworkingApp.ipa ]; then
             echo "::error::El archivo IPA no fue generado o está vacío en build/ipa/NetworkingApp.ipa."
@@ -110,6 +136,7 @@ jobs:
           ls -lh build/ipa/NetworkingApp.ipa
 
       - name: Upload IPA Artifact to GitHub
+        if: env.BUILD_IPA == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: NetworkingApp-iOS
@@ -118,6 +145,7 @@ jobs:
           retention-days: 14
 
       - name: Prepare GitHub Pages Distribution
+        if: env.BUILD_IPA == 'true'
         run: |
           echo "Preparando archivos para distribución en GitHub Pages..."
           mkdir -p build/pages
@@ -318,9 +346,11 @@ jobs:
           ls -la build/pages
 
       - name: Setup Pages
+        if: env.BUILD_IPA == 'true'
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
+        if: env.BUILD_IPA == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: build/pages
@@ -337,10 +367,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
+        if: env.BUILD_IPA == 'true'
         id: deployment
         uses: actions/deploy-pages@v4
 
       - name: Show Deployment & Installation URLs
+        if: env.BUILD_IPA == 'true'
         run: |
           PAGES_URL="${{ steps.deployment.outputs.page_url }}"
           MANIFEST_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/manifest.plist"
@@ -351,3 +383,8 @@ jobs:
           echo "URL de instalación directa de NetworkingApp:"
           echo "${INSTALL_URL}"
           echo "================================================================"
+
+      - name: Skip Notification
+        if: env.BUILD_IPA != 'true'
+        run: |
+          echo "Despliegue de GitHub Pages omitido porque BUILD_IPA está en 'false'."
