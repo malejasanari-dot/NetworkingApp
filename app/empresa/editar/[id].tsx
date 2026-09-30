@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../../context/CompaniesContext';
 import { useContacts } from '../../../context/ContactsContext';
 import { useThemeColor } from '../../../hooks/use-theme-color';
+import { SectorSelector } from '../../../components/SectorSelector';
 
 import { useToast } from '../../../context/ToastContext';
 import { shadowStyle } from '../../../utils/shadow';
@@ -19,7 +20,7 @@ export default function EditarEmpresaScreen() {
   const { contacts, updateContact } = useContacts();
   
   const [name, setName] = useState('');
-  const [sector, setSector] = useState('');
+  const [sectorId, setSectorId] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -45,7 +46,7 @@ export default function EditarEmpresaScreen() {
   useEffect(() => {
     if (company) {
       setName(company.name);
-      setSector(company.sector || '');
+      setSectorId(company.sectorId !== undefined ? company.sectorId : null);
       setNotes(company.notes || '');
     }
   }, [company]);
@@ -68,7 +69,7 @@ export default function EditarEmpresaScreen() {
     if (!company) return null;
     return {
       name: company.name || '',
-      sector: company.sector || '',
+      sectorId: company.sectorId !== undefined ? company.sectorId : null,
       notes: company.notes || '',
     };
   }, [company]);
@@ -77,10 +78,10 @@ export default function EditarEmpresaScreen() {
     if (!initialValues) return false;
     return (
       name.trim() !== initialValues.name.trim() ||
-      sector.trim() !== initialValues.sector.trim() ||
+      sectorId !== initialValues.sectorId ||
       notes.trim() !== initialValues.notes.trim()
     );
-  }, [initialValues, name, sector, notes]);
+  }, [initialValues, name, sectorId, notes]);
 
   React.useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
@@ -153,7 +154,7 @@ export default function EditarEmpresaScreen() {
         const oldName = company.name;
         await updateCompany(id, {
           name: newName,
-          sector: sector.trim(),
+          sectorId,
           notes: notes.trim(),
         });
 
@@ -212,17 +213,12 @@ export default function EditarEmpresaScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: primaryColor }]}>Sector / Industria</Text>
-          <View style={[styles.inputWrapper, { backgroundColor: cardColor, borderColor }]}>
-            <Ionicons name="hammer-outline" size={20} color={primaryColor} style={styles.inputIcon} />
-            <ControlledInput
-              style={[styles.input, { color: textColor }]}
-              placeholder="Ej: Tecnología, Diseño, Salud..."
-              placeholderTextColor={secondaryText}
-              value={sector}
-              onChangeText={setSector}
-            />
-          </View>
+          <SectorSelector
+            label="Sector / Industria"
+            value={sectorId}
+            onChange={setSectorId}
+            placeholder="Seleccionar sector..."
+          />
         </View>
 
         <View style={styles.inputGroup}>

@@ -5,6 +5,7 @@ import { useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../context/CompaniesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
+import { SectorSelector } from '../../components/SectorSelector';
 
 import { useToast } from '../../context/ToastContext';
 import { shadowStyle } from '../../utils/shadow';
@@ -16,7 +17,7 @@ export default function AgregarEmpresaScreen() {
   const { addCompany } = useCompanies();
   
   const [name, setName] = useState('');
-  const [sector, setSector] = useState('');
+  const [sectorId, setSectorId] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -39,7 +40,7 @@ export default function AgregarEmpresaScreen() {
 
   const isSavingRef = React.useRef(false);
 
-  const hasUnsavedChanges = Boolean(name.trim() || sector.trim() || notes.trim());
+  const hasUnsavedChanges = Boolean(name.trim() || sectorId !== null || notes.trim());
 
   React.useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
@@ -101,7 +102,7 @@ export default function AgregarEmpresaScreen() {
     try {
       await addCompany({
         name: name.trim(),
-        sector: sector.trim(),
+        sectorId,
         notes: notes.trim(),
       });
       toast.success('Empresa creada correctamente');
@@ -147,17 +148,12 @@ export default function AgregarEmpresaScreen() {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: primaryColor }]}>Sector / Industria</Text>
-          <View style={[styles.inputWrapper, { backgroundColor: cardColor, borderColor }]}>
-            <Ionicons name="hammer-outline" size={20} color={primaryColor} style={styles.inputIcon} />
-            <ControlledInput
-              style={[styles.input, { color: textColor }]}
-              placeholder="Ej: Tecnología, Diseño, Salud..."
-              placeholderTextColor={secondaryText}
-              value={sector}
-              onChangeText={setSector}
-            />
-          </View>
+          <SectorSelector
+            label="Sector / Industria"
+            value={sectorId}
+            onChange={setSectorId}
+            placeholder="Seleccionar sector..."
+          />
         </View>
 
         <View style={styles.inputGroup}>

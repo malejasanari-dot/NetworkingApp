@@ -9,6 +9,7 @@ export interface Company {
   id: string;
   name: string;
   sector?: string;
+  sectorId?: number | null;
   notes?: string;
   contactIds?: string[];
 }
@@ -29,13 +30,22 @@ const CompaniesContext = createContext<CompaniesContextData>({} as CompaniesCont
 const STORAGE_KEY = '@personal_networking_companies';
 const MIGRATION_FLAG_KEY = (userId: string) => `@companies_migrated_to_supabase_${userId}`;
 
-const mapRowToCompany = (row: any): Company => ({
-  id: row.id,
-  name: row.name,
-  sector: row.sector || undefined,
-  notes: row.notes || undefined,
-  contactIds: Array.isArray(row.contact_ids) ? row.contact_ids : [],
-});
+const mapRowToCompany = (row: any): Company => {
+  const sectorName =
+    row.sectors?.name ||
+    (Array.isArray(row.sectors) && row.sectors[0]?.name) ||
+    row.sector ||
+    undefined;
+
+  return {
+    id: row.id,
+    name: row.name,
+    sector: sectorName,
+    sectorId: row.sector_id !== undefined && row.sector_id !== null ? Number(row.sector_id) : null,
+    notes: row.notes || undefined,
+    contactIds: Array.isArray(row.contact_ids) ? row.contact_ids : [],
+  };
+};
 
 const mapCompanyToRow = (company: Partial<Company>, userId: string) => {
   const row: any = {
@@ -44,6 +54,7 @@ const mapCompanyToRow = (company: Partial<Company>, userId: string) => {
   if (company.id !== undefined) row.id = company.id;
   if (company.name !== undefined) row.name = company.name;
   if (company.sector !== undefined) row.sector = company.sector || null;
+  if (company.sectorId !== undefined) row.sector_id = company.sectorId;
   if (company.notes !== undefined) row.notes = company.notes || null;
   if (company.contactIds !== undefined) row.contact_ids = company.contactIds || [];
   return row;
@@ -148,7 +159,7 @@ export const CompaniesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setIsLoading(true);
       const { data, error } = await supabase
         .from('companies')
-        .select('*')
+        .select('*, sectors(name)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -195,7 +206,7 @@ export const CompaniesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const { data, error } = await supabase
       .from('companies')
       .insert(row)
-      .select()
+      .select('*, sectors(name)')
       .single();
 
     if (error) {
@@ -226,20 +237,29 @@ export const CompaniesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const rowUpdate = mapCompanyToRow(updatedData, user.id);
     delete rowUpdate.id;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('companies')
       .update(rowUpdate)
       .eq('id', id)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .select('*, sectors(name)')
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating company in Supabase:', error);
       throw error;
     }
 
+    const updatedCompany = data ? mapRowToCompany(data) : null;
+
     setCompanies(prev => {
       const current = Array.isArray(prev) ? prev : [];
-      return current.map(c => (c && c.id === id ? { ...c, ...updatedData } : c));
+      return current.map(c => {
+        if (c && c.id === id) {
+          return updatedCompany || { ...c, ...updatedData };
+        }
+        return c;
+      });
     });
   }, [user?.id, companies]);
 
