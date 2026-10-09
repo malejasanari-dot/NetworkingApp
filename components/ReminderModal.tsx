@@ -221,10 +221,10 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable onPress={Keyboard.dismiss}>
+      <Pressable onPress={Keyboard.dismiss} style={{ flex: 1 }}>
         <View style={styles.overlay}>
           <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.modalContainer}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
           >
@@ -242,6 +242,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 style={styles.scrollArea}
+                contentContainerStyle={{ paddingBottom: 8 }}
               >
                 {/* 1. Selector de Contactos */}
                 <View style={styles.formGroup}>
@@ -422,7 +423,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                 <View style={styles.formGroup}>
                   <Text style={[styles.label, { color: primaryColor }]}>Nota (opcional)</Text>
                   <TextInput
-                    style={[styles.input, { borderColor, color: textColor, backgroundColor: borderColor + '05' }]}
+                    style={[styles.input, { borderColor, color: textColor, backgroundColor: borderColor + '10' }]}
                     placeholder="Ej: Enviar propuesta, llamar para saludar..."
                     placeholderTextColor={secondaryText}
                     value={nota}
@@ -631,7 +632,9 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
     fontSize: 15,
     minHeight: 70,
   },

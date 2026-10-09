@@ -269,7 +269,8 @@ export default function ContactDetailScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        <View style={styles.header}>
+        <View style={styles.innerContent}>
+          <View style={styles.header}>
           <View style={styles.headerActions}>
             <TouchableOpacity 
               style={[styles.headerButton, { backgroundColor: primaryColor + '15' }]} 
@@ -505,18 +506,19 @@ export default function ContactDetailScreen() {
           <Ionicons name="trash-outline" size={20} color="#FFF" />
           <Text style={styles.deleteButtonText}>Eliminar Contacto</Text>
         </TouchableOpacity>
-
-        <ReminderModal 
-          isVisible={isModalVisible}
-          onClose={() => {
-            setIsModalVisible(false);
-            setEditingReminder(undefined);
-          }}
-          onSave={handleSaveReminder}
-          initialData={editingReminder}
-          initialContactId={id as string}
-        />
+        </View>
       </ScrollView>
+
+      <ReminderModal 
+        isVisible={isModalVisible}
+        onClose={() => {
+          setIsModalVisible(false);
+          setEditingReminder(undefined);
+        }}
+        onSave={handleSaveReminder}
+        initialData={editingReminder}
+        initialContactId={id as string}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -526,11 +528,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    padding: 24,
+    paddingBottom: 60,
+  },
+  innerContent: {
     width: '100%',
     maxWidth: 760,
     alignSelf: 'center',
-    padding: 24,
-    paddingBottom: 60,
   },
   errorContainer: {
     flex: 1,
