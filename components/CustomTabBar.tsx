@@ -48,13 +48,13 @@ const TABS: TabItem[] = [
       path.startsWith('/contactos') || path.startsWith('/(tabs)/contactos'),
   },
   {
-    id: 'favoritos',
-    name: 'Favoritos',
-    route: '/favoritos',
-    iconFocused: 'star',
-    iconUnfocused: 'star-outline',
+    id: 'directorio',
+    name: 'Directorio',
+    route: '/directorio',
+    iconFocused: 'book',
+    iconUnfocused: 'book-outline',
     isMatch: (path: string) =>
-      path.startsWith('/favoritos') || path.startsWith('/(tabs)/favoritos'),
+      path.startsWith('/directorio') || path.startsWith('/(tabs)/directorio'),
   },
   {
     id: 'empresas',

@@ -13,7 +13,7 @@ import { useReminders } from '../../context/RemindersContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 
 const HOME_ROUTE = '/(tabs)';
-const TAB_ROUTES = [HOME_ROUTE, '/contactos', '/favoritos', '/empresas', '/perfil'];
+const TAB_ROUTES = [HOME_ROUTE, '/contactos', '/directorio', '/empresas', '/perfil'];
 
 const isHomePath = (path: string): boolean => {
   return (
@@ -28,7 +28,7 @@ const isHomePath = (path: string): boolean => {
 const getCurrentTabIndex = (path: string): number => {
   if (isHomePath(path)) return 0;
   if (path.startsWith('/contactos') || path.startsWith('/(tabs)/contactos')) return 1;
-  if (path.startsWith('/favoritos') || path.startsWith('/(tabs)/favoritos')) return 2;
+  if (path.startsWith('/directorio') || path.startsWith('/(tabs)/directorio')) return 2;
   if (path.startsWith('/empresas') || path.startsWith('/(tabs)/empresas')) return 3;
   if (path.startsWith('/perfil') || path.startsWith('/(tabs)/perfil')) return 4;
   return -1;
@@ -142,15 +142,9 @@ export default function TabLayout() {
               }}
             />
             <Tabs.Screen
-              name="agregar"
+              name="directorio"
               options={{
-                href: null,
-              }}
-            />
-            <Tabs.Screen
-              name="favoritos"
-              options={{
-                title: 'Favoritos',
+                title: 'Directorio',
               }}
             />
             <Tabs.Screen
@@ -163,6 +157,19 @@ export default function TabLayout() {
               name="perfil"
               options={{
                 title: 'Perfil',
+              }}
+            />
+            <Tabs.Screen
+              name="favoritos"
+              options={{
+                href: null,
+                title: 'Favoritos',
+              }}
+            />
+            <Tabs.Screen
+              name="agregar"
+              options={{
+                href: null,
               }}
             />
           </Tabs>

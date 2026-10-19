@@ -12,7 +12,7 @@ import { ContactsProvider } from '@/context/ContactsContext';
 import { CompaniesProvider } from '@/context/CompaniesContext';
 import { RemindersProvider } from '@/context/RemindersContext';
 import { NotesProvider } from '@/context/NotesContext';
-import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
@@ -83,6 +83,7 @@ function RootLayoutContent() {
         <Stack.Screen name="perfil/notificaciones" options={{ title: 'Notificaciones' }} />
         <Stack.Screen name="perfil/sincronizacion" options={{ title: 'Sincronización' }} />
         <Stack.Screen name="perfil/privacidad" options={{ title: 'Privacidad y Seguridad' }} />
+        <Stack.Screen name="directorio/[id]" options={{ title: 'Ficha de Candidato' }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </>

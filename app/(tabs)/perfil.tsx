@@ -308,13 +308,25 @@ export default function PerfilScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.menuItem} 
+          style={[styles.menuItem, { borderBottomColor: borderColor }]} 
           onPress={() => router.push('/perfil/privacidad')}
           activeOpacity={0.7}
         >
           <View style={styles.menuItemLeft}>
             <Ionicons name="lock-closed-outline" size={22} color={primaryColor} />
             <Text style={[styles.menuItemText, { color: textColor }]}>Privacidad y Seguridad</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={secondaryText} />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.menuItem} 
+          onPress={() => router.push('/directorio' as any)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.menuItemLeft}>
+            <Ionicons name="book-outline" size={22} color={primaryColor} />
+            <Text style={[styles.menuItemText, { color: textColor }]}>Directorio LHH</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={secondaryText} />
         </TouchableOpacity>

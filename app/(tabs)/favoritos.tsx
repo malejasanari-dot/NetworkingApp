@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { StyleSheet, View, Text, FlatList, ActivityIndicator, RefreshControl, Platform } from 'react-native';
+import { StyleSheet, View, Text, FlatList, ActivityIndicator, RefreshControl, Platform, TouchableOpacity } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -69,9 +69,33 @@ export default function FavoritosScreen() {
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <View style={[styles.header, { backgroundColor: cardColor, borderBottomColor: borderColor }]}>
-        <Ionicons name="star" size={24} color={accent2} style={styles.headerIcon} />
-        <Text style={[styles.title, { color: primaryColor }]}>Mis Favoritos</Text>
-        <Text style={[styles.subtitle, { color: secondaryText }]}>Tus contactos más importantes</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/contactos');
+              }
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Volver a Contactos"
+          >
+            <Ionicons name="arrow-back" size={22} color={primaryColor} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleCenter}>
+            <View style={styles.titleIconRow}>
+              <Ionicons name="star" size={20} color={accent2} style={styles.headerIcon} />
+              <Text style={[styles.title, { color: primaryColor }]}>Mis Favoritos</Text>
+            </View>
+            <Text style={[styles.subtitle, { color: secondaryText }]}>
+              {favoriteContacts.length === 1 ? '1 contacto destacado' : `${favoriteContacts.length} contactos destacados`}
+            </Text>
+          </View>
+          <View style={styles.headerRightSpacer} />
+        </View>
       </View>
 
       <FlatList
@@ -106,22 +130,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     width: '100%',
   },
-  headerIcon: {
-    marginBottom: 4,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    maxWidth: 760,
+    width: '100%',
+    alignSelf: 'center',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  headerTitleCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  titleIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 2,
   },
+  headerIcon: {
+    marginRight: 0,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
+  },
+  headerRightSpacer: {
+    width: 40,
   },
   listContent: {
     width: '100%',

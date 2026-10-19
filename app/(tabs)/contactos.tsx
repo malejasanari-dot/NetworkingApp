@@ -46,8 +46,13 @@ export default function ContactosScreen() {
   const textColor = useThemeColor({}, 'text');
   const secondaryText = useThemeColor({}, 'secondaryText');
   const primaryColor = useThemeColor({}, 'primary');
-  const accent1 = useThemeColor({}, 'accent1');
+  const accent2 = useThemeColor({}, 'accent2');
   const borderColor = useThemeColor({}, 'border');
+
+  const favoritesCount = useMemo(() => {
+    if (!contacts) return 0;
+    return contacts.filter(c => Boolean(c && c.favorito)).length;
+  }, [contacts]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -72,6 +77,15 @@ export default function ContactosScreen() {
     navigation.setOptions({
       headerRight: () => (
         <View style={styles.headerRightContainer}>
+          <TouchableOpacity 
+            onPress={() => router.push('/favoritos' as any)} 
+            style={styles.headerActionButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="Favoritos"
+            accessibilityRole="button"
+          >
+            <Ionicons name="star-outline" size={22} color={primaryColor} />
+          </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => router.push('/contacto/importar')} 
             style={styles.headerActionButton}
@@ -249,6 +263,44 @@ export default function ContactosScreen() {
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <View style={styles.topSection}>
+        {/* Acceso Directo Visible: Favoritos */}
+        <TouchableOpacity
+          style={[
+            styles.favoritesBanner,
+            { backgroundColor: cardColor, borderColor }
+          ]}
+          onPress={() => router.push('/favoritos' as any)}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel={`Ver favoritos, ${favoritesCount} contactos destacados`}
+        >
+          <View style={styles.favoritesBannerLeft}>
+            <View style={[styles.favoritesIconCircle, { backgroundColor: accent2 + '18' }]}>
+              <Ionicons name="star" size={19} color={accent2} />
+            </View>
+            <View style={styles.favoritesTextCol}>
+              <View style={styles.favoritesTitleRow}>
+                <Text style={[styles.favoritesBannerTitle, { color: primaryColor }]}>
+                  Mis Favoritos
+                </Text>
+                <View style={[styles.favoritesCountBadge, { backgroundColor: accent2 + '15', borderColor: accent2 + '35' }]}>
+                  <Text style={[styles.favoritesCountBadgeText, { color: accent2 }]}>
+                    {favoritesCount}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.favoritesBannerSubtitle, { color: secondaryText }]} numberOfLines={1}>
+                {favoritesCount === 1
+                  ? '1 contacto prioritario destacado'
+                  : `${favoritesCount} contactos prioritarios destacados`}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.favoritesChevronCircle, { backgroundColor: primaryColor + '10' }]}>
+            <Ionicons name="chevron-forward" size={16} color={primaryColor} />
+          </View>
+        </TouchableOpacity>
+
         {/* Search Bar & Filter Toggle Button */}
         <View style={[styles.searchContainer, { backgroundColor: cardColor, borderColor }]}>
           <Ionicons name="search" size={18} color={secondaryText} style={styles.searchIcon} />
@@ -406,11 +458,71 @@ const styles = StyleSheet.create({
     maxWidth: 760,
     alignSelf: 'center',
   },
+  favoritesBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    ...shadowStyle(1, 0.04, 4),
+  },
+  favoritesBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  favoritesIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  favoritesTextCol: {
+    flex: 1,
+  },
+  favoritesTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  favoritesBannerTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  favoritesCountBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 1.5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  favoritesCountBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  favoritesBannerSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  favoritesChevronCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 16,
-    marginTop: 12,
+    marginTop: 8,
     marginBottom: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
