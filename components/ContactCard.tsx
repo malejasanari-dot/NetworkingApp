@@ -2,10 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring, 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
   withSequence,
   withTiming
 } from 'react-native-reanimated';
@@ -30,7 +30,6 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
   const colorScheme = useColorScheme() ?? 'light';
   const cardColor = useThemeColor({}, 'card');
   const secondaryText = useThemeColor({}, 'secondaryText');
-  const textColor = useThemeColor({}, 'text');
   const primaryColor = useThemeColor({}, 'primary');
   const borderColor = useThemeColor({}, 'border');
   const accent1 = useThemeColor({}, 'accent1');
@@ -64,7 +63,9 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
   };
 
   const hasCompany = Boolean(contact.company && contact.company.trim());
-  const tagsList = Array.isArray(contact.tags) ? contact.tags.filter(t => typeof t === 'string' && t.trim().length > 0) : [];
+  const tagsList = Array.isArray(contact.tags)
+    ? contact.tags.filter(t => typeof t === 'string' && t.trim().length > 0 && !t.toLowerCase().startsWith('directorio_id:') && t !== 'Directorio LHH')
+    : [];
   const maxVisibleTags = 2;
   const visibleTags = tagsList.slice(0, maxVisibleTags);
   const extraTagsCount = tagsList.length - maxVisibleTags;
@@ -74,9 +75,9 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
   const categoryColor = contact.categoria ? categoryColorMap[contact.categoria] : primaryColor;
 
   return (
-    <TouchableOpacity 
-      style={[styles.card, { backgroundColor: cardColor, borderColor }]} 
-      onPress={onPress} 
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: cardColor, borderColor }]}
+      onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={styles.mainRow}>
@@ -97,10 +98,12 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
             )}
           </View>
 
-          {/* Nivel 2: Empresa (solo si existe) */}
-          {hasCompany && (
+          {/* Nivel 2: Cargo/Rol y Empresa (solo si existen) */}
+          {(contact.cargoRol || hasCompany) && (
             <Text style={[styles.companyText, { color: secondaryText }]} numberOfLines={1}>
-              {contact.company}
+              {contact.cargoRol && hasCompany
+                ? `${contact.cargoRol} · ${contact.company}`
+                : (contact.cargoRol || contact.company)}
             </Text>
           )}
 
@@ -132,16 +135,16 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
         </View>
 
         {/* Botón Favorito */}
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handleToggleFavorite}
           style={styles.favoriteButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Animated.View style={animatedStyle}>
-            <Ionicons 
-              name={contact.favorito ? "star" : "star-outline"} 
-              size={22} 
-              color={contact.favorito ? accent2 : secondaryText} 
+            <Ionicons
+              name={contact.favorito ? "star" : "star-outline"}
+              size={22}
+              color={contact.favorito ? accent2 : secondaryText}
             />
           </Animated.View>
         </TouchableOpacity>
@@ -149,6 +152,8 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
     </TouchableOpacity>
   );
 });
+
+ContactCard.displayName = 'ContactCard';
 
 const styles = StyleSheet.create({
   card: {

@@ -1,16 +1,21 @@
+import { ContactCategory } from './categories';
+
 export interface Contact {
   id: string;
   name: string;
   company?: string;
+  cargoRol?: string; // Campo Cargo/Rol
   empresaActual?: string;
   empresasAnteriores?: string[];
   tags: string[];
-  categoria?: 'Conocidos' | 'Referidos' | 'Gestionados';
+  categoria?: ContactCategory;
   favorito: boolean;
   notes?: string;
   phone?: string;
   dateAdded: string;
+  directorioId?: string; // Identificador interno de origen Directorio LHH
 }
+
 
 export interface Recordatorio {
   id: string;

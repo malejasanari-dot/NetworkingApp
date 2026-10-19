@@ -3,10 +3,10 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput,
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring, 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
   withSequence,
   withTiming,
   FadeInDown
@@ -37,7 +37,7 @@ export default function ContactDetailScreen() {
 
   const [isModalVisible, setIsModalVisible] = React.useState(false);
   const [editingReminder, setEditingReminder] = React.useState<Recordatorio | undefined>(undefined);
-  
+
   // States for new note
   const [newNoteContent, setNewNoteContent] = React.useState('');
   const [editingNoteId, setEditingNoteId] = React.useState<string | null>(null);
@@ -86,11 +86,21 @@ export default function ContactDetailScreen() {
     .filter(Boolean)
     .join(' | ');
 
+  const visibleTags = useMemo(() => {
+    return (contact?.tags || []).filter(t =>
+      typeof t === 'string' &&
+      !t.toLowerCase().startsWith('directorio_id:') &&
+      !t.toLowerCase().startsWith('directorio:') &&
+      t !== 'Directorio LHH'
+    );
+  }, [contact?.tags]);
+
   const handleToggleFavorite = () => {
     if (contact) {
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
+      // eslint-disable-next-line react-hooks/immutability
       scale.value = withSequence(
         withTiming(1.3, { duration: 100 }),
         withSpring(1, { damping: 10, stiffness: 100 })
@@ -120,7 +130,7 @@ export default function ContactDetailScreen() {
   const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string; contactIds: string[] }) => {
     if (editingReminder) {
       await updateReminder(
-        editingReminder.id, 
+        editingReminder.id,
         { fecha: data.fecha, nota: data.nota },
         contact?.name
       );
@@ -180,16 +190,16 @@ export default function ContactDetailScreen() {
       "¿Estás seguro de que deseas eliminar esta nota del historial?",
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Eliminar", 
-          style: "destructive", 
+        {
+          text: "Eliminar",
+          style: "destructive",
           onPress: async () => {
             if (editingNoteId === noteId) {
               cancelEditingNote();
             }
             await deleteNote(noteId);
             toast.info('Nota eliminada');
-          } 
+          }
         }
       ]
     );
@@ -211,13 +221,13 @@ export default function ContactDetailScreen() {
       "¿Estás seguro de que deseas eliminar este recordatorio?",
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Eliminar", 
-          style: "destructive", 
+        {
+          text: "Eliminar",
+          style: "destructive",
           onPress: async () => {
             await deleteReminder(reminderId);
             toast.info('Recordatorio eliminado');
-          } 
+          }
         }
       ]
     );
@@ -230,9 +240,9 @@ export default function ContactDetailScreen() {
       "¿Estás seguro de que deseas eliminar este contacto? Esta acción no se puede deshacer.",
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Eliminar", 
-          style: "destructive", 
+        {
+          text: "Eliminar",
+          style: "destructive",
           onPress: async () => {
             if (contact) {
               await syncContactCompanies(contact.id, undefined, undefined);
@@ -263,8 +273,8 @@ export default function ContactDetailScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <ScrollView 
-        style={[styles.container, { backgroundColor }]} 
+      <ScrollView
+        style={[styles.container, { backgroundColor }]}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -272,22 +282,22 @@ export default function ContactDetailScreen() {
         <View style={styles.innerContent}>
           <View style={styles.header}>
           <View style={styles.headerActions}>
-            <TouchableOpacity 
-              style={[styles.headerButton, { backgroundColor: primaryColor + '15' }]} 
+            <TouchableOpacity
+              style={[styles.headerButton, { backgroundColor: primaryColor + '15' }]}
               onPress={() => router.push(`/contacto/editar/${contact.id}`)}
             >
               <Ionicons name="pencil" size={20} color={primaryColor} />
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.headerButton, { backgroundColor: contact.favorito ? accent2 + '15' : primaryColor + '15' }]} 
+
+            <TouchableOpacity
+              style={[styles.headerButton, { backgroundColor: contact.favorito ? accent2 + '15' : primaryColor + '15' }]}
               onPress={handleToggleFavorite}
             >
               <Animated.View style={animatedStyle}>
-                <Ionicons 
-                  name={contact.favorito ? "star" : "star-outline"} 
-                  size={22} 
-                  color={contact.favorito ? accent2 : primaryColor} 
+                <Ionicons
+                  name={contact.favorito ? "star" : "star-outline"}
+                  size={22}
+                  color={contact.favorito ? accent2 : primaryColor}
                 />
               </Animated.View>
             </TouchableOpacity>
@@ -297,7 +307,13 @@ export default function ContactDetailScreen() {
             <Text style={[styles.avatarText, { color: '#FFFFFF' }]}>{contact.name.charAt(0)}</Text>
           </View>
           <Text style={[styles.name, { color: primaryColor }]}>{contact.name}</Text>
-          
+
+          {contact.cargoRol ? (
+            <Text style={[styles.cargoRolText, { color: secondaryText }]}>
+              {contact.cargoRol}
+            </Text>
+          ) : null}
+
           {empresaActualObj ? (
             <TouchableOpacity onPress={() => router.push(`/empresa/${empresaActualObj.id}`)}>
                <Text style={[styles.company, { color: primaryColor, textDecorationLine: 'underline' }]}>
@@ -313,7 +329,7 @@ export default function ContactDetailScreen() {
               Anteriores: {empresasAnterioresStr}
             </Text>
           ) : null}
-          
+
           <View style={styles.badgesRow}>
             {contact.categoria && (() => {
               const catColors = colorScheme === 'dark' ? CATEGORY_COLORS_DARK : CATEGORY_COLORS;
@@ -346,12 +362,12 @@ export default function ContactDetailScreen() {
           {contactReminders.map(reminder => {
             const isCompleted = Boolean(reminder.completado);
             return (
-              <View 
-                key={reminder.id} 
+              <View
+                key={reminder.id}
                 style={[
-                  styles.reminderItem, 
-                  { 
-                    backgroundColor: cardColor, 
+                  styles.reminderItem,
+                  {
+                    backgroundColor: cardColor,
                     borderColor: isCompleted ? '#10B98135' : borderColor,
                     opacity: isCompleted ? 0.75 : 1,
                   }
@@ -359,14 +375,14 @@ export default function ContactDetailScreen() {
               >
                 <View style={styles.reminderContent}>
                   <View style={styles.reminderTop}>
-                    <Ionicons 
-                      name={isCompleted ? "checkmark-circle" : "notifications-outline"} 
-                      size={16} 
-                      color={isCompleted ? "#10B981" : accent1} 
+                    <Ionicons
+                      name={isCompleted ? "checkmark-circle" : "notifications-outline"}
+                      size={16}
+                      color={isCompleted ? "#10B981" : accent1}
                     />
-                    <Text 
+                    <Text
                       style={[
-                        styles.reminderDate, 
+                        styles.reminderDate,
                         { color: isCompleted ? "#10B981" : accent1 }
                       ]}
                     >
@@ -378,10 +394,10 @@ export default function ContactDetailScreen() {
                       </View>
                     )}
                   </View>
-                  <Text 
+                  <Text
                     style={[
-                      styles.reminderNote, 
-                      { 
+                      styles.reminderNote,
+                      {
                         color: isCompleted ? secondaryText : textColor,
                         textDecorationLine: isCompleted ? 'line-through' : 'none',
                       }
@@ -391,26 +407,26 @@ export default function ContactDetailScreen() {
                   </Text>
                 </View>
                 <View style={styles.reminderActions}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => handleToggleCompleteReminder(reminder)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     activeOpacity={0.7}
                     accessibilityLabel={isCompleted ? "Marcar como pendiente" : "Marcar como completado"}
                   >
-                    <Ionicons 
-                      name={isCompleted ? "checkmark-circle" : "checkmark-circle-outline"} 
-                      size={22} 
-                      color="#10B981" 
+                    <Ionicons
+                      name={isCompleted ? "checkmark-circle" : "checkmark-circle-outline"}
+                      size={22}
+                      color="#10B981"
                     />
                   </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => openEditReminder(reminder)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     activeOpacity={0.7}
                   >
                     <Ionicons name="create-outline" size={20} color={secondaryText} />
                   </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => handleDeleteReminder(reminder.id)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     activeOpacity={0.7}
@@ -429,7 +445,7 @@ export default function ContactDetailScreen() {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Historial de Interacciones</Text>
-          
+
           <View style={[styles.noteInputContainer, { backgroundColor: cardColor, borderColor }]}>
             <TextInput
               style={[styles.noteInput, { color: textColor }]}
@@ -445,8 +461,8 @@ export default function ContactDetailScreen() {
                   <Text style={{ color: secondaryText }}>Cancelar</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity 
-                style={[styles.saveNoteButton, { backgroundColor: primaryColor }]} 
+              <TouchableOpacity
+                style={[styles.saveNoteButton, { backgroundColor: primaryColor }]}
                 onPress={handleAddOrUpdateNote}
               >
                 <Text style={styles.saveNoteButtonText}>{editingNoteId ? "Actualizar" : "Guardar Nota"}</Text>
@@ -454,26 +470,37 @@ export default function ContactDetailScreen() {
             </View>
           </View>
 
-          {contactNotes.map((note, index) => (
-            <Animated.View 
-              key={note.id} 
-              entering={index === 0 ? FadeInDown.duration(300) : undefined}
-              style={[styles.noteCard, { backgroundColor: index % 2 === 0 ? cardColor : primaryColor + '08', borderColor }]}
-            >
-              <View style={styles.noteCardHeader}>
-                <Text style={[styles.noteDate, { color: secondaryText }]}>{formatDate(note.fecha)}</Text>
-                <View style={styles.noteCardActions}>
-                  <TouchableOpacity onPress={() => startEditingNote(note)}>
-                    <Ionicons name="pencil-outline" size={16} color={secondaryText} />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleDeleteNote(note.id)}>
-                    <Ionicons name="trash-outline" size={16} color={accent2} />
-                  </TouchableOpacity>
+          {contactNotes
+            .map((note) => {
+              // Filtrar líneas de metadatos de directorio para no mostrar el ID en la interfaz
+              const sanitizedContent = note.contenido
+                .split('\n')
+                .filter(line => !line.toLowerCase().includes('id directorio'))
+                .join('\n')
+                .trim();
+              return { ...note, sanitizedContent };
+            })
+            .filter(n => n.sanitizedContent.length > 0)
+            .map((note, index) => (
+              <Animated.View
+                key={note.id}
+                entering={index === 0 ? FadeInDown.duration(300) : undefined}
+                style={[styles.noteCard, { backgroundColor: index % 2 === 0 ? cardColor : primaryColor + '08', borderColor }]}
+              >
+                <View style={styles.noteCardHeader}>
+                  <Text style={[styles.noteDate, { color: secondaryText }]}>{formatDate(note.fecha)}</Text>
+                  <View style={styles.noteCardActions}>
+                    <TouchableOpacity onPress={() => startEditingNote(note)}>
+                      <Ionicons name="pencil-outline" size={16} color={secondaryText} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteNote(note.id)}>
+                      <Ionicons name="trash-outline" size={16} color={accent2} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-              <Text style={[styles.noteContent, { color: textColor }]}>{note.contenido}</Text>
-            </Animated.View>
-          ))}
+                <Text style={[styles.noteContent, { color: textColor }]}>{note.sanitizedContent}</Text>
+              </Animated.View>
+            ))}
 
           {contactNotes.length === 0 && (
             <Text style={[styles.noDataText, { color: secondaryText }]}>No hay historial registrado.</Text>
@@ -482,21 +509,33 @@ export default function ContactDetailScreen() {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Información de Contacto</Text>
+          {contact.cargoRol ? (
+            <View style={[styles.infoRow, { backgroundColor: cardColor, borderColor, marginBottom: 8 }]}>
+              <Ionicons name="briefcase-outline" size={24} color={primaryColor} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.infoLabel, { color: secondaryText }]}>Cargo/Rol</Text>
+                <Text style={[styles.infoText, { color: textColor }]}>{contact.cargoRol}</Text>
+              </View>
+            </View>
+          ) : null}
           <View style={[styles.infoRow, { backgroundColor: cardColor, borderColor }]}>
             <Ionicons name="call-outline" size={24} color={primaryColor} />
-            <Text style={[styles.infoText, { color: textColor }]}>{contact.phone || 'No registrado'}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.infoLabel, { color: secondaryText }]}>Teléfono</Text>
+              <Text style={[styles.infoText, { color: textColor }]}>{contact.phone || 'No registrado'}</Text>
+            </View>
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Etiquetas</Text>
           <View style={styles.tagsContainer}>
-            {contact.tags.map((tag, index) => (
+            {visibleTags.map((tag, index) => (
               <View key={index} style={[styles.tagBadge, { backgroundColor: '#FDF361' }]}>
                 <Text style={[styles.tagText, { color: '#333333' }]}>{tag}</Text>
               </View>
             ))}
-            {contact.tags.length === 0 && (
+            {visibleTags.length === 0 && (
               <Text style={[styles.noDataText, { color: secondaryText }]}>Sin etiquetas</Text>
             )}
           </View>
@@ -509,7 +548,7 @@ export default function ContactDetailScreen() {
         </View>
       </ScrollView>
 
-      <ReminderModal 
+      <ReminderModal
         isVisible={isModalVisible}
         onClose={() => {
           setIsModalVisible(false);
@@ -595,6 +634,18 @@ const styles = StyleSheet.create({
   company: {
     fontSize: 16,
     marginBottom: 4,
+  },
+  cargoRolText: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 2,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  infoLabel: {
+    fontSize: 12,
+    marginLeft: 16,
+    marginBottom: 2,
   },
   anterioresText: {
     fontSize: 14,

@@ -19,7 +19,113 @@ interface ContactsContextData {
 const ContactsContext = createContext<ContactsContextData>({} as ContactsContextData);
 
 const STORAGE_KEY = '@personal_networking_contacts';
+const LEGACY_EXTRA_FIELDS_KEY = '@personal_networking_contacts_extra';
+const USER_EXTRA_FIELDS_KEY = (userId: string) => `@personal_networking_contacts_extra_${userId}`;
 const MIGRATION_FLAG_KEY = (userId: string) => `@contacts_migrated_to_supabase_${userId}`;
+
+export interface ContactExtra {
+  cargoRol?: string;
+  directorioId?: string;
+  syncedWithDb?: boolean;
+}
+
+let isCargoRolSupportedInDb = false;
+let isDirectorioIdSupportedInDb = false;
+let hasCheckedDbColumns = false;
+
+const isColumnNotFoundError = (err: any): boolean => {
+  if (!err) return false;
+  if (err.code === '42703') return true;
+  if (typeof err.message === 'string') {
+    const msg = err.message.toLowerCase();
+    return msg.includes('column') && msg.includes('does not exist');
+  }
+  return false;
+};
+
+export const checkDbColumnsSupport = async (forceRefresh = false): Promise<{ cargoRol: boolean; directorioId: boolean }> => {
+  if (hasCheckedDbColumns && !forceRefresh) {
+    return { cargoRol: isCargoRolSupportedInDb, directorioId: isDirectorioIdSupportedInDb };
+  }
+
+  let cargoCheckCompleted = false;
+  let dirCheckCompleted = false;
+
+  try {
+    const { error: cargoError } = await supabase.from('contacts').select('cargo_rol').limit(1);
+    if (!cargoError) {
+      isCargoRolSupportedInDb = true;
+      cargoCheckCompleted = true;
+    } else if (isColumnNotFoundError(cargoError)) {
+      isCargoRolSupportedInDb = false;
+      cargoCheckCompleted = true;
+    } else {
+      // Error de red, timeout o sesión: no asumir que no existe
+      console.warn('[checkDbColumnsSupport] Advertencia verificando cargo_rol:', cargoError.message);
+    }
+  } catch (err: any) {
+    console.warn('[checkDbColumnsSupport] Excepción de red verificando cargo_rol:', err?.message);
+  }
+
+  try {
+    const { error: dirError } = await supabase.from('contacts').select('directorio_id').limit(1);
+    if (!dirError) {
+      isDirectorioIdSupportedInDb = true;
+      dirCheckCompleted = true;
+    } else if (isColumnNotFoundError(dirError)) {
+      isDirectorioIdSupportedInDb = false;
+      dirCheckCompleted = true;
+    } else {
+      console.warn('[checkDbColumnsSupport] Advertencia verificando directorio_id:', dirError.message);
+    }
+  } catch (err: any) {
+    console.warn('[checkDbColumnsSupport] Excepción de red verificando directorio_id:', err?.message);
+  }
+
+  // Solo consideramos la verificación definitiva si ambas consultas obtuvieron respuesta concluyente
+  if (cargoCheckCompleted && dirCheckCompleted) {
+    hasCheckedDbColumns = true;
+  }
+
+  return { cargoRol: isCargoRolSupportedInDb, directorioId: isDirectorioIdSupportedInDb };
+};
+
+const getStoredExtraFields = async (userId?: string): Promise<Record<string, ContactExtra>> => {
+  if (!userId) return {};
+  try {
+    const userKey = USER_EXTRA_FIELDS_KEY(userId);
+    const rawUser = await AsyncStorage.getItem(userKey);
+    let userExtras: Record<string, ContactExtra> = rawUser ? JSON.parse(rawUser) : {};
+
+    // Migración no destructiva desde la clave legacy global si existe
+    const rawLegacy = await AsyncStorage.getItem(LEGACY_EXTRA_FIELDS_KEY);
+    if (rawLegacy) {
+      try {
+        const legacyExtras: Record<string, ContactExtra> = JSON.parse(rawLegacy);
+        if (legacyExtras && typeof legacyExtras === 'object' && Object.keys(legacyExtras).length > 0) {
+          userExtras = { ...legacyExtras, ...userExtras };
+          await AsyncStorage.setItem(userKey, JSON.stringify(userExtras));
+          await AsyncStorage.removeItem(LEGACY_EXTRA_FIELDS_KEY);
+        }
+      } catch (e) {
+        console.error('Error migrando legacy extras:', e);
+      }
+    }
+
+    return userExtras;
+  } catch {
+    return {};
+  }
+};
+
+const saveStoredExtraFields = async (userId: string | undefined, extras: Record<string, ContactExtra>) => {
+  if (!userId) return;
+  try {
+    await AsyncStorage.setItem(USER_EXTRA_FIELDS_KEY(userId), JSON.stringify(extras));
+  } catch {
+    // Ignorar excepciones de cuota local
+  }
+};
 
 const normalizePhone = (phone?: string): string => {
   if (!phone) return '';
@@ -36,13 +142,16 @@ const isPureMockContact = (c: Contact): boolean => {
   );
 };
 
-const mapRowToContact = (row: any): Contact => {
+const mapRowToContact = (row: any, localExtras?: Record<string, any>): Contact => {
   const rawCategoria = row.categoria;
   const categoria = (CONTACT_CATEGORIES as readonly string[]).includes(rawCategoria) ? rawCategoria as Contact['categoria'] : undefined;
+  const extra = localExtras?.[row.id] || {};
+
   return {
     id: row.id,
     name: row.name,
     company: row.company || undefined,
+    cargoRol: row.cargo_rol || row.cargo || extra.cargoRol || undefined,
     empresaActual: row.empresa_actual || undefined,
     empresasAnteriores: Array.isArray(row.empresas_anteriores) ? row.empresas_anteriores : [],
     tags: Array.isArray(row.tags) ? row.tags : [],
@@ -51,6 +160,7 @@ const mapRowToContact = (row: any): Contact => {
     notes: row.notes || undefined,
     phone: row.phone || undefined,
     dateAdded: row.date_added || new Date().toISOString(),
+    directorioId: row.directorio_id || extra.directorioId || undefined,
   };
 };
 
@@ -69,6 +179,15 @@ const mapContactToRow = (contact: Partial<Contact>, userId: string) => {
   if (contact.phone !== undefined) row.phone = contact.phone || null;
   if (contact.categoria !== undefined) row.categoria = contact.categoria || null;
   if (contact.dateAdded !== undefined) row.date_added = contact.dateAdded;
+
+  // Persistir en Supabase solo si la columna existe en el esquema remoto
+  if (isCargoRolSupportedInDb && contact.cargoRol !== undefined) {
+    row.cargo_rol = contact.cargoRol || null;
+  }
+  if (isDirectorioIdSupportedInDb && contact.directorioId !== undefined) {
+    row.directorio_id = contact.directorioId || null;
+  }
+
   return row;
 };
 
@@ -234,6 +353,11 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
+  // Resetear la caché de comprobación de columnas cuando cambia la sesión del usuario
+  useEffect(() => {
+    hasCheckedDbColumns = false;
+  }, [user?.id]);
+
   const loadContacts = useCallback(async () => {
     if (!user?.id) {
       setContacts([]);
@@ -243,6 +367,9 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     try {
       setIsLoading(true);
+      await checkDbColumnsSupport();
+      const localExtras = await getStoredExtraFields(user.id);
+
       const { data, error } = await supabase
         .from('contacts')
         .select('*')
@@ -258,15 +385,82 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       let finalRows = data || [];
       finalRows = await migrateLocalContactsIfNeeded(user.id, finalRows);
 
-      setContacts(finalRows.map(mapRowToContact));
+      setContacts(finalRows.map(row => mapRowToContact(row, localExtras)));
+
+      // Sincronización segura en segundo plano hacia Supabase si las columnas están disponibles
+      if (isCargoRolSupportedInDb || isDirectorioIdSupportedInDb) {
+        let hasExtrasChanged = false;
+        const syncTasks: Promise<void>[] = [];
+
+        for (const row of finalRows) {
+          const extra = localExtras[row.id];
+          if (!extra) continue;
+
+          // 1. Si Supabase ya tiene el dato en la columna remota, alinear localExtras y marcar como sincronizado
+          if (row.cargo_rol || row.directorio_id) {
+            if (!extra.syncedWithDb || (row.cargo_rol && extra.cargoRol !== row.cargo_rol) || (row.directorio_id && extra.directorioId !== row.directorio_id)) {
+              if (row.cargo_rol) extra.cargoRol = row.cargo_rol;
+              if (row.directorio_id) extra.directorioId = row.directorio_id;
+              extra.syncedWithDb = true;
+              hasExtrasChanged = true;
+            }
+            continue;
+          }
+
+          // 2. Si el dato ya fue sincronizado previamente y en Supabase está nulo,
+          // significa que fue deliberadamente vaciado/eliminado. No resucitarlo.
+          if (extra.syncedWithDb) {
+            continue;
+          }
+
+          // 3. Preparar payload únicamente para campos pendientes
+          const payload: any = {};
+          if (isCargoRolSupportedInDb && !row.cargo_rol && extra.cargoRol) {
+            payload.cargo_rol = extra.cargoRol;
+          }
+          if (isDirectorioIdSupportedInDb && !row.directorio_id && extra.directorioId) {
+            payload.directorio_id = extra.directorioId;
+          }
+
+          if (Object.keys(payload).length > 0) {
+            syncTasks.push(
+              (async () => {
+                const { error: updateErr } = await supabase
+                  .from('contacts')
+                  .update(payload)
+                  .eq('id', row.id)
+                  .eq('user_id', user.id);
+
+                if (!updateErr) {
+                  extra.syncedWithDb = true;
+                  hasExtrasChanged = true;
+                } else {
+                  console.warn('[ContactsContext] Error sincronizando campos remotos para', row.id, updateErr.message);
+                }
+              })()
+            );
+          }
+        }
+
+        if (syncTasks.length > 0) {
+          Promise.allSettled(syncTasks).then(async () => {
+            if (hasExtrasChanged) {
+              await saveStoredExtraFields(user.id, localExtras);
+            }
+          }).catch(() => {});
+        } else if (hasExtrasChanged) {
+          await saveStoredExtraFields(user.id, localExtras);
+        }
+      }
     } catch (err) {
       console.error('Error in loadContacts:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadContacts();
   }, [loadContacts]);
 
@@ -274,6 +468,8 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!user?.id) {
       throw new Error('Usuario no autenticado');
     }
+
+    await checkDbColumnsSupport();
 
     const newContact: Contact = {
       ...newContactData,
@@ -293,22 +489,36 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       throw error;
     }
 
-    const insertedContact = data ? mapRowToContact(data) : newContact;
+    // Persistir en caché local aislada por usuario
+    if (newContact.cargoRol || newContact.directorioId) {
+      const extras = await getStoredExtraFields(user.id);
+      extras[newContact.id] = {
+        cargoRol: newContact.cargoRol,
+        directorioId: newContact.directorioId,
+        syncedWithDb: isCargoRolSupportedInDb && isDirectorioIdSupportedInDb,
+      };
+      await saveStoredExtraFields(user.id, extras);
+    }
+
+    const localExtras = await getStoredExtraFields(user.id);
+    const insertedContact = data ? mapRowToContact(data, localExtras) : newContact;
 
     setContacts(prev => [insertedContact, ...(Array.isArray(prev) ? prev : [])]);
 
     return insertedContact;
-  }, [user?.id]);
+  }, [user]);
 
   const importContacts = useCallback(async (newContactsData: Omit<Contact, 'id' | 'dateAdded'>[]) => {
     if (!user?.id) {
       return { imported: 0, skipped: 0 };
     }
 
+    await checkDbColumnsSupport();
     const now = new Date().toISOString();
     let importedCount = 0;
     let skippedCount = 0;
     const newInsertedContacts: Contact[] = [];
+    const extras = await getStoredExtraFields(user.id);
 
     for (let index = 0; index < newContactsData.length; index++) {
       const data = newContactsData[index];
@@ -336,7 +546,14 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           .single();
 
         if (!error) {
-          newInsertedContacts.unshift(insertedData ? mapRowToContact(insertedData) : newContact);
+          if (newContact.cargoRol || newContact.directorioId) {
+            extras[newContact.id] = {
+              cargoRol: newContact.cargoRol,
+              directorioId: newContact.directorioId,
+              syncedWithDb: isCargoRolSupportedInDb && isDirectorioIdSupportedInDb,
+            };
+          }
+          newInsertedContacts.unshift(insertedData ? mapRowToContact(insertedData, extras) : newContact);
           importedCount++;
         } else {
           console.error('Error importing contact item:', error);
@@ -347,15 +564,32 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     }
 
+    if (Object.keys(extras).length > 0) {
+      await saveStoredExtraFields(user.id, extras);
+    }
+
     if (newInsertedContacts.length > 0) {
       setContacts(prev => [...newInsertedContacts, ...(Array.isArray(prev) ? prev : [])]);
     }
 
     return { imported: importedCount, skipped: skippedCount };
-  }, [user?.id, contacts]);
+  }, [user, contacts]);
 
   const updateContact = useCallback(async (id: string, updatedData: Partial<Contact>) => {
     if (!user?.id) return;
+
+    await checkDbColumnsSupport();
+
+    if (updatedData.cargoRol !== undefined || updatedData.directorioId !== undefined) {
+      const extras = await getStoredExtraFields(user.id);
+      extras[id] = {
+        ...extras[id],
+        ...(updatedData.cargoRol !== undefined ? { cargoRol: updatedData.cargoRol || undefined } : {}),
+        ...(updatedData.directorioId !== undefined ? { directorioId: updatedData.directorioId || undefined } : {}),
+        syncedWithDb: isCargoRolSupportedInDb && isDirectorioIdSupportedInDb,
+      };
+      await saveStoredExtraFields(user.id, extras);
+    }
 
     const rowUpdate = mapContactToRow(updatedData, user.id);
     delete rowUpdate.id;
@@ -375,10 +609,16 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const current = Array.isArray(prev) ? prev : [];
       return current.map(c => (c && c.id === id ? { ...c, ...updatedData } : c));
     });
-  }, [user?.id]);
+  }, [user]);
 
   const deleteContact = useCallback(async (id: string) => {
     if (!user?.id) return;
+
+    const extras = await getStoredExtraFields(user.id);
+    if (extras[id]) {
+      delete extras[id];
+      await saveStoredExtraFields(user.id, extras);
+    }
 
     // Limpieza de referencias en contact_ids de empresas en Supabase
     try {
@@ -418,9 +658,10 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const current = Array.isArray(prev) ? prev : [];
       return current.filter(c => c && c.id !== id);
     });
-  }, [user?.id]);
+  }, [user]);
 
   const refreshContacts = useCallback(async () => {
+    await checkDbColumnsSupport(true);
     await loadContacts();
   }, [loadContacts]);
 

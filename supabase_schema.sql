@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS public.contacts (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   company TEXT,
+  cargo_rol TEXT,
+  directorio_id TEXT,
   empresa_actual TEXT,
   empresas_anteriores TEXT[] DEFAULT '{}',
   tags TEXT[] DEFAULT '{}',
@@ -73,6 +75,8 @@ CREATE TABLE IF NOT EXISTS public.reminders (
 -- Migración para tablas existentes:
 ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS completado BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS notificacion_id TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS cargo_rol TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS directorio_id TEXT;
 
 
 -- ==============================================================================

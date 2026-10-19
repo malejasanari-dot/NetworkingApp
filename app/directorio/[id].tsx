@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,11 @@ import { useThemeColor } from '../../hooks/use-theme-color';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { shadowStyle } from '../../utils/shadow';
 import { isValidLinkedInUrl, openLinkedInUrl } from '../../utils/linkedin';
+import { useContacts } from '../../context/ContactsContext';
+import { useCompanies } from '../../context/CompaniesContext';
+import { useNotes } from '../../context/NotesContext';
+import { useToast } from '../../context/ToastContext';
+import { Nota } from '../../constants/MockData';
 
 export default function CandidateDetailScreen() {
   const router = useRouter();
@@ -36,6 +42,13 @@ export default function CandidateDetailScreen() {
   const secondaryText = useThemeColor({}, 'secondaryText');
   const primaryColor = useThemeColor({}, 'primary');
   const borderColor = useThemeColor({}, 'border');
+
+  const { contacts, addContact } = useContacts();
+  const { companies, syncContactCompanies } = useCompanies();
+  const { addNote, getNotesForContact } = useNotes();
+  const toast = useToast();
+
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Estado del candidato
   const [candidate, setCandidate] = useState<CandidateDirectoryItem | null>(() => {
@@ -108,6 +121,174 @@ export default function CandidateDetailScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     router.back();
+  };
+
+  // Detección de contacto existente (Deduplicación segura y reactiva)
+  const existingContact = useMemo(() => {
+    if (!candidate || !contacts || contacts.length === 0) return null;
+
+    const candIdStr = String(candidate.idSistema);
+    const idTag = `directorio_id:${candIdStr}`;
+    const idNoteSnippet = `#${candIdStr}`;
+    const candName = candidate.nombreCompleto?.trim().toLowerCase();
+    const candEmpresa = candidate.empresa?.trim().toLowerCase() || '';
+
+    // 1. Prioridad: Coincidencia exacta por directorioId, tag legacy o nota legacy
+    const exactMatch = contacts.find((c) => {
+      if (c.directorioId && String(c.directorioId) === candIdStr) return true;
+      const hasTag = Array.isArray(c.tags) && c.tags.includes(idTag);
+      const hasNote = typeof c.notes === 'string' && c.notes.includes(idNoteSnippet);
+      return hasTag || hasNote;
+    });
+
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    // 2. Coincidencia por LinkedIn para contactos del Directorio LHH
+    if (candidate.linkedin && candidate.linkedin.trim()) {
+      const candLi = candidate.linkedin.trim().toLowerCase();
+      const matchByLinkedIn = contacts.find((c) => {
+        if (c.categoria === 'Directorio LHH') {
+          const notesOfContact = getNotesForContact(c.id);
+          const hasLiNote = notesOfContact.some((n: Nota) => n.contenido.toLowerCase().includes(candLi));
+          const hasLiInDirectNotes = typeof c.notes === 'string' && c.notes.toLowerCase().includes(candLi);
+          return hasLiNote || hasLiInDirectNotes;
+        }
+        return false;
+      });
+      if (matchByLinkedIn) {
+        return matchByLinkedIn;
+      }
+    }
+
+    // 3. Coincidencia secundaria por nombre normalizado Y empresa (cuando ambos datos existen)
+    if (candName && candEmpresa) {
+      const matchByNameAndCompany = contacts.find((c) => {
+        const cName = c.name?.trim().toLowerCase();
+        const cCompany = (c.company || '').trim().toLowerCase();
+        return cName === candName && cCompany === candEmpresa;
+      });
+
+      if (matchByNameAndCompany) {
+        return matchByNameAndCompany;
+      }
+    }
+
+    return null;
+  }, [candidate, contacts, getNotesForContact]);
+
+  const isAlreadySaved = Boolean(existingContact);
+
+  // Verificación de coincidencia ambigua (mismo nombre pero diferente o sin empresa)
+  const findAmbiguousContact = useCallback(() => {
+    if (!candidate || !contacts || contacts.length === 0) return null;
+    const candName = candidate.nombreCompleto?.trim().toLowerCase();
+    if (!candName) return null;
+
+    return contacts.find((c) => {
+      const cName = c.name?.trim().toLowerCase();
+      return cName === candName;
+    }) || null;
+  }, [candidate, contacts]);
+
+  const performSaveContact = async () => {
+    if (!candidate || isSaving) return;
+
+    setIsSaving(true);
+    try {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      // Vincular empresa si ya existe en CompaniesContext
+      let empresaId: string | undefined = undefined;
+      if (candidate.empresa) {
+        const normEmpresa = candidate.empresa.trim().toLowerCase();
+        const foundComp = companies.find((c) => c.name?.trim().toLowerCase() === normEmpresa);
+        if (foundComp) {
+          empresaId = foundComp.id;
+        }
+      }
+
+      // Guardar candidato como Contacto con categoría "Directorio LHH", cargoRol y empresas
+      const newContact = await addContact({
+        name: candidate.nombreCompleto.trim(),
+        cargoRol: candidate.cargo?.trim() || undefined,
+        company: candidate.empresa?.trim() || undefined,
+        empresaActual: empresaId,
+        empresasAnteriores: [],
+        tags: [],
+        categoria: 'Directorio LHH',
+        notes: undefined,
+        favorito: false,
+        directorioId: String(candidate.idSistema),
+      });
+
+      if (empresaId && newContact?.id) {
+        try {
+          await syncContactCompanies(newContact.id, empresaId, []);
+        } catch {
+          // No bloquear si la vinculación de empresa falla
+        }
+      }
+
+      // Guardar enlace de LinkedIn exclusivamente en notas del contacto
+      if (candidate.linkedin && candidate.linkedin.trim() && newContact?.id) {
+        try {
+          await addNote({
+            contactoId: newContact.id,
+            contenido: `LinkedIn: ${candidate.linkedin.trim()}`,
+            fecha: new Date().toISOString(),
+          });
+        } catch {
+          // No bloquear si la nota de LinkedIn falla
+        }
+      }
+
+      toast.success('Candidato agregado a tus contactos');
+    } catch (err: any) {
+      console.error('[directorio/[id]] Error al agregar contacto:', err);
+      toast.error(err?.message || 'No se pudo guardar el contacto. Intente nuevamente.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddToContacts = () => {
+    if (isSaving || isAlreadySaved) return;
+
+    // Verificar si existe coincidencia ambigua por nombre
+    const ambiguous = findAmbiguousContact();
+    if (ambiguous) {
+      Alert.alert(
+        'Posible contacto existente',
+        `Ya tienes un contacto llamado "${ambiguous.name}"${ambiguous.company ? ` en "${ambiguous.company}"` : ''}.\n\n¿Deseas revisarlo o agregarlo como un contacto separado?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Ver existente',
+            onPress: () => router.push(`/contacto/${ambiguous.id}` as any),
+          },
+          {
+            text: 'Agregar nuevo',
+            onPress: performSaveContact,
+          },
+        ]
+      );
+      return;
+    }
+
+    performSaveContact();
+  };
+
+  const handleViewContact = () => {
+    if (existingContact?.id) {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      router.push(`/contacto/${existingContact.id}` as any);
+    }
   };
 
   return (
@@ -221,6 +402,69 @@ export default function CandidateDetailScreen() {
                       Programa {candidateYear}
                     </Text>
                   </View>
+                )}
+              </View>
+
+              {/* Botón Principal de Acción: Agregar a Contactos / Estado Guardado */}
+              <View style={styles.actionSection}>
+                {isAlreadySaved ? (
+                  <View style={styles.savedActionRow}>
+                    <View
+                      style={[
+                        styles.savedBadge,
+                        {
+                          backgroundColor: isDark ? 'rgba(46, 125, 50, 0.16)' : 'rgba(46, 125, 50, 0.09)',
+                          borderColor: isDark ? 'rgba(76, 175, 80, 0.35)' : 'rgba(46, 125, 50, 0.25)',
+                        },
+                      ]}
+                    >
+                      <Ionicons name="checkmark-circle" size={17} color={isDark ? '#81C784' : '#2E7D32'} style={{ marginRight: 6 }} />
+                      <Text style={[styles.savedBadgeText, { color: isDark ? '#81C784' : '#2E7D32' }]}>
+                        Guardado en Contactos
+                      </Text>
+                    </View>
+
+                    {existingContact?.id && (
+                      <TouchableOpacity
+                        style={[styles.viewContactBtn, { borderColor: primaryColor }]}
+                        onPress={handleViewContact}
+                        activeOpacity={0.75}
+                        accessibilityRole="button"
+                        accessibilityLabel="Ver contacto en la libreta"
+                      >
+                        <Ionicons name="person-outline" size={15} color={primaryColor} style={{ marginRight: 5 }} />
+                        <Text style={[styles.viewContactBtnText, { color: primaryColor }]}>
+                          Ver contacto
+                        </Text>
+                        <Ionicons name="chevron-forward" size={14} color={primaryColor} style={{ marginLeft: 2 }} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[
+                      styles.addContactButton,
+                      { backgroundColor: primaryColor },
+                      isSaving && { opacity: 0.75 },
+                    ]}
+                    onPress={handleAddToContacts}
+                    disabled={isSaving}
+                    activeOpacity={0.82}
+                    accessibilityRole="button"
+                    accessibilityLabel="Agregar este candidato a mis contactos"
+                  >
+                    {isSaving ? (
+                      <>
+                        <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                        <Text style={styles.addContactButtonText}>Guardando contacto...</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="person-add" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                        <Text style={styles.addContactButtonText}>Agregar a contactos</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
                 )}
               </View>
             </View>
@@ -593,5 +837,59 @@ const styles = StyleSheet.create({
   returnButtonText: {
     fontSize: 15,
     fontWeight: '600',
+  },
+  actionSection: {
+    marginTop: 18,
+    width: '100%',
+  },
+  addContactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    width: '100%',
+    ...shadowStyle(1, 0.08, 4),
+  },
+  addContactButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  savedActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    width: '100%',
+    flexWrap: 'wrap',
+  },
+  savedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    flex: 1,
+    minWidth: 170,
+  },
+  savedBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  viewContactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  viewContactBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

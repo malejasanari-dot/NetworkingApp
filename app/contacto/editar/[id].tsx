@@ -23,6 +23,7 @@ export default function EditarScreen() {
   const contact = contacts.find(c => c.id === id);
 
   const [name, setName] = useState('');
+  const [cargoRol, setCargoRol] = useState('');
   const [phone, setPhone] = useState('');
   const [empresaActual, setEmpresaActual] = useState('');
   const [empresasAnteriores, setEmpresasAnteriores] = useState<string[]>([]);
@@ -50,37 +51,36 @@ export default function EditarScreen() {
 
   useEffect(() => {
     if (contact) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(contact.name || '');
+      setCargoRol(contact.cargoRol || '');
       setPhone(contact.phone || '');
       setEmpresaActual(contact.empresaActual || '');
       setEmpresasAnteriores(contact.empresasAnteriores || []);
-      setTagsInput(formatTags(contact.tags));
+      // Ocultar etiquetas internas de directorio del campo editable
+      const visibleTags = (contact.tags || []).filter(
+        t => !t.toLowerCase().startsWith('directorio_id:') && t !== 'Directorio LHH'
+      );
+      setTagsInput(formatTags(visibleTags));
       setFavorito(contact.favorito || false);
       setCategoria(contact.categoria || undefined);
     }
   }, [contact]);
 
-  if (!contact) {
-    return (
-      <View style={[styles.errorContainer, { backgroundColor }]}>
-        <Text style={[styles.errorText, { color: secondaryText }]}>Contacto no encontrado.</Text>
-        <TouchableOpacity style={[styles.backButton, { backgroundColor: primaryColor }]} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Volver</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   const isSavingRef = React.useRef(false);
 
   const initialValues = React.useMemo(() => {
     if (!contact) return null;
+    const visibleTags = (contact.tags || []).filter(
+      t => !t.toLowerCase().startsWith('directorio_id:') && t !== 'Directorio LHH'
+    );
     return {
       name: contact.name || '',
+      cargoRol: contact.cargoRol || '',
       phone: contact.phone || '',
       empresaActual: contact.empresaActual || '',
       empresasAnteriores: contact.empresasAnteriores || [],
-      tagsInput: formatTags(contact.tags || []),
+      tagsInput: formatTags(visibleTags),
       favorito: Boolean(contact.favorito),
       categoria: contact.categoria || undefined,
     };
@@ -89,6 +89,7 @@ export default function EditarScreen() {
   const hasUnsavedChanges = React.useMemo(() => {
     if (!initialValues) return false;
     const sameName = name.trim() === initialValues.name.trim();
+    const sameCargoRol = cargoRol.trim() === initialValues.cargoRol.trim();
     const samePhone = phone.trim() === initialValues.phone.trim();
     const sameEmpresaActual = empresaActual === initialValues.empresaActual;
     const sameEmpresasAnteriores = JSON.stringify(empresasAnteriores) === JSON.stringify(initialValues.empresasAnteriores);
@@ -96,8 +97,8 @@ export default function EditarScreen() {
     const sameFavorito = favorito === initialValues.favorito;
     const sameCategoria = categoria === initialValues.categoria;
 
-    return !(sameName && samePhone && sameEmpresaActual && sameEmpresasAnteriores && sameTags && sameFavorito && sameCategoria);
-  }, [initialValues, name, phone, empresaActual, empresasAnteriores, tagsInput, favorito, categoria]);
+    return !(sameName && sameCargoRol && samePhone && sameEmpresaActual && sameEmpresasAnteriores && sameTags && sameFavorito && sameCategoria);
+  }, [initialValues, name, cargoRol, phone, empresaActual, empresasAnteriores, tagsInput, favorito, categoria]);
 
   React.useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
@@ -125,6 +126,17 @@ export default function EditarScreen() {
     return unsubscribe;
   }, [navigation, hasUnsavedChanges]);
 
+  if (!contact) {
+    return (
+      <View style={[styles.errorContainer, { backgroundColor }]}>
+        <Text style={[styles.errorText, { color: secondaryText }]}>Contacto no encontrado.</Text>
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: primaryColor }]} onPress={() => router.back()}>
+          <Text style={styles.backButtonText}>Volver</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   const handleCancel = () => {
     if (hasUnsavedChanges) {
       Alert.alert(
@@ -132,13 +144,13 @@ export default function EditarScreen() {
         "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
         [
           { text: "Seguir editando", style: "cancel" },
-          { 
-            text: "Salir sin guardar", 
-            style: "destructive", 
+          {
+            text: "Salir sin guardar",
+            style: "destructive",
             onPress: () => {
               isSavingRef.current = true;
               router.back();
-            } 
+            }
           }
         ]
       );
@@ -157,12 +169,15 @@ export default function EditarScreen() {
     setIsSaving(true);
     isSavingRef.current = true;
     try {
-      const tagsArray = parseTags(tagsInput);
+      const userTags = parseTags(tagsInput);
+      const internalTags = (contact.tags || []).filter(t => t.toLowerCase().startsWith('directorio_id:'));
+      const tagsArray = [...internalTags, ...userTags];
 
       const compName = empresaActual ? companies.find(c => c.id === empresaActual)?.name || '' : '';
 
       await updateContact(id as string, {
         name: name.trim(),
+        cargoRol: cargoRol.trim() || undefined,
         phone: phone.trim(),
         company: compName,
         empresaActual,
@@ -185,24 +200,24 @@ export default function EditarScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        
+
         <View style={styles.header}>
           <Text style={[styles.headerTitle, { color: primaryColor }]}>Editar Contacto</Text>
         </View>
 
         <View style={styles.formGroup}>
           <Text style={[styles.label, { color: primaryColor }]}>Nombre completo *</Text>
-          <ControlledInput 
+          <ControlledInput
             style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
             placeholder="Ej. Juan Pérez"
             placeholderTextColor={secondaryText}
@@ -212,8 +227,19 @@ export default function EditarScreen() {
         </View>
 
         <View style={styles.formGroup}>
+          <Text style={[styles.label, { color: primaryColor }]}>Cargo/Rol</Text>
+          <ControlledInput
+            style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
+            placeholder="Ej. Director de Operaciones"
+            placeholderTextColor={secondaryText}
+            value={cargoRol}
+            onChangeText={setCargoRol}
+          />
+        </View>
+
+        <View style={styles.formGroup}>
           <Text style={[styles.label, { color: primaryColor }]}>Teléfono</Text>
-          <ControlledInput 
+          <ControlledInput
             style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
             placeholder="Ej. +34 600 000 000"
             keyboardType="phone-pad"
@@ -224,7 +250,7 @@ export default function EditarScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <CompanySelector 
+          <CompanySelector
             label="Empresa Actual"
             value={empresaActual}
             onChange={setEmpresaActual}
@@ -233,7 +259,7 @@ export default function EditarScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <CompanySelector 
+          <CompanySelector
             label="Empresas Anteriores"
             value={empresasAnteriores}
             onChange={setEmpresasAnteriores}
@@ -244,7 +270,7 @@ export default function EditarScreen() {
 
         <View style={styles.formGroup}>
           <Text style={[styles.label, { color: primaryColor }]}>Etiquetas (separadas por coma)</Text>
-          <ControlledInput 
+          <ControlledInput
             style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
             placeholder="Ej. Evento, Inversor, Marketing"
             placeholderTextColor={secondaryText}
@@ -268,7 +294,7 @@ export default function EditarScreen() {
                   ]}
                   onPress={() => setCategoria(isActive ? undefined : cat)}
                 >
-                  <Text 
+                  <Text
                     style={[
                       styles.categoryChipText,
                       { color: primaryColor },
@@ -290,7 +316,7 @@ export default function EditarScreen() {
             <Text style={[styles.switchLabel, { color: primaryColor }]}>Marcar como Favorito</Text>
             <Text style={[styles.switchSubLabel, { color: secondaryText }]}>Aparecerá destacado en la lista</Text>
           </View>
-          <Switch 
+          <Switch
             value={favorito}
             onValueChange={setFavorito}
             trackColor={{ false: borderColor, true: accent2 }}
@@ -298,8 +324,8 @@ export default function EditarScreen() {
           />
         </View>
 
-        <TouchableOpacity 
-          style={[styles.saveButton, { backgroundColor: primaryColor, opacity: isSaving ? 0.7 : 1 }]} 
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: primaryColor, opacity: isSaving ? 0.7 : 1 }]}
           onPress={handleSave}
           disabled={isSaving}
           activeOpacity={0.7}
@@ -310,7 +336,7 @@ export default function EditarScreen() {
             <Text style={styles.saveButtonText}>Guardar Cambios</Text>
           )}
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={[styles.cancelButton, { borderColor }]} onPress={handleCancel} disabled={isSaving}>
           <Text style={[styles.cancelButtonText, { color: secondaryText }]}>Cancelar</Text>
         </TouchableOpacity>

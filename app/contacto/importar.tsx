@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Contact, ContactField, requestPermissionsAsync } from 'expo-contacts';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation } from 'expo-router';
@@ -97,9 +97,11 @@ export default function ImportarContactosScreen() {
         .map((c: any) => {
           const fullName = c.fullName || [c.givenName, c.familyName].filter(Boolean).join(' ') || c.name || [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Contacto sin nombre';
           const phone = (c.phones && c.phones.length > 0 ? c.phones[0].number : '') || (c.phoneNumbers && c.phoneNumbers.length > 0 ? c.phoneNumbers[0].number : '') || '';
-          const company = c.company || c.jobTitle || '';
+          const company = c.company || '';
+          const cargoRol = c.jobTitle || '';
           return {
             name: fullName.trim(),
+            cargoRol: cargoRol || undefined,
             phone: phone,
             company: company,
             tags: [],

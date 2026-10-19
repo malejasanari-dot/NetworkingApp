@@ -105,14 +105,20 @@ export default function ContactosScreen() {
     setActiveCategory(prev => (prev === cat ? null : cat));
   };
 
-  // Dynamic tags extraction from user's contacts
+  // Dynamic tags extraction from user's contacts (omitiendo etiquetas internas de directorio)
   const availableTags = useMemo(() => {
     if (!contacts) return [];
     const set = new Set<string>();
     contacts.forEach(c => {
       if (Array.isArray(c.tags)) {
         c.tags.forEach(t => {
-          if (typeof t === 'string' && t.trim()) {
+          if (
+            typeof t === 'string' &&
+            t.trim() &&
+            !t.toLowerCase().startsWith('directorio_id:') &&
+            !t.toLowerCase().startsWith('directorio:') &&
+            t !== 'Directorio LHH'
+          ) {
             set.add(t.trim());
           }
         });

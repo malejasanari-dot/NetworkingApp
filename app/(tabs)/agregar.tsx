@@ -23,6 +23,7 @@ export default function AgregarScreen() {
   const { companies, syncContactCompanies } = useCompanies();
 
   const [name, setName] = useState('');
+  const [cargoRol, setCargoRol] = useState('');
   const [phone, setPhone] = useState('');
   const [empresaActual, setEmpresaActual] = useState('');
   const [empresasAnteriores, setEmpresasAnteriores] = useState<string[]>([]);
@@ -53,6 +54,7 @@ export default function AgregarScreen() {
 
   const resetForm = () => {
     setName('');
+    setCargoRol('');
     setPhone('');
     setEmpresaActual('');
     setEmpresasAnteriores([]);
@@ -64,6 +66,7 @@ export default function AgregarScreen() {
 
   const hasUnsavedChanges = Boolean(
     name.trim() ||
+    cargoRol.trim() ||
     phone.trim() ||
     empresaActual ||
     (empresasAnteriores && empresasAnteriores.length > 0) ||
@@ -107,9 +110,9 @@ export default function AgregarScreen() {
         "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
         [
           { text: "Seguir editando", style: "cancel" },
-          { 
-            text: "Salir sin guardar", 
-            style: "destructive", 
+          {
+            text: "Salir sin guardar",
+            style: "destructive",
             onPress: () => {
               isSavingRef.current = true;
               resetForm();
@@ -118,7 +121,7 @@ export default function AgregarScreen() {
               } else {
                 router.push('/contactos');
               }
-            } 
+            }
           }
         ]
       );
@@ -148,6 +151,7 @@ export default function AgregarScreen() {
 
       const newContact = await addContact({
         name: name.trim(),
+        cargoRol: cargoRol.trim() || undefined,
         phone: phone.trim(),
         company: compName,
         empresaActual,
@@ -169,7 +173,7 @@ export default function AgregarScreen() {
       }
 
       toast.success('Contacto guardado correctamente');
-      
+
       resetForm();
       router.push('/contactos');
     } catch (error: any) {
@@ -181,17 +185,17 @@ export default function AgregarScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        
+
         <View style={styles.header}>
           <View style={[styles.avatarPlaceholder, { backgroundColor: primaryColor + '10', borderColor: primaryColor }]}>
             <Ionicons name="camera" size={32} color={primaryColor} />
@@ -201,7 +205,7 @@ export default function AgregarScreen() {
 
         <View style={styles.formGroup}>
           <Text style={[styles.label, { color: primaryColor }]}>Nombre completo *</Text>
-          <ControlledInput 
+          <ControlledInput
             style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
             placeholder="Ej. Juan Pérez"
             placeholderTextColor={secondaryText}
@@ -211,8 +215,19 @@ export default function AgregarScreen() {
         </View>
 
         <View style={styles.formGroup}>
+          <Text style={[styles.label, { color: primaryColor }]}>Cargo/Rol</Text>
+          <ControlledInput
+            style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
+            placeholder="Ej. Director de Operaciones"
+            placeholderTextColor={secondaryText}
+            value={cargoRol}
+            onChangeText={setCargoRol}
+          />
+        </View>
+
+        <View style={styles.formGroup}>
           <Text style={[styles.label, { color: primaryColor }]}>Teléfono</Text>
-          <ControlledInput 
+          <ControlledInput
             style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
             placeholder="Ej. +34 600 000 000"
             keyboardType="phone-pad"
@@ -223,7 +238,7 @@ export default function AgregarScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <CompanySelector 
+          <CompanySelector
             label="Empresa Actual"
             value={empresaActual}
             onChange={setEmpresaActual}
@@ -232,7 +247,7 @@ export default function AgregarScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <CompanySelector 
+          <CompanySelector
             label="Empresas Anteriores"
             value={empresasAnteriores}
             onChange={setEmpresasAnteriores}
@@ -243,7 +258,7 @@ export default function AgregarScreen() {
 
         <View style={styles.formGroup}>
           <Text style={[styles.label, { color: primaryColor }]}>Etiquetas (separadas por coma)</Text>
-          <ControlledInput 
+          <ControlledInput
             style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
             placeholder="Ej. Evento, Inversor, Marketing"
             placeholderTextColor={secondaryText}
@@ -254,7 +269,7 @@ export default function AgregarScreen() {
 
         <View style={styles.formGroup}>
           <Text style={[styles.label, { color: primaryColor }]}>Notas adicionales</Text>
-          <ControlledInput 
+          <ControlledInput
             style={[styles.input, styles.textArea, { backgroundColor: cardColor, borderColor, color: textColor }]}
             placeholder="Ej. Hablamos sobre el nuevo proyecto de la empresa..."
             multiline
@@ -281,7 +296,7 @@ export default function AgregarScreen() {
                   ]}
                   onPress={() => setCategoria(isActive ? undefined : cat)}
                 >
-                  <Text 
+                  <Text
                     style={[
                       styles.categoryChipText,
                       { color: primaryColor },
@@ -303,7 +318,7 @@ export default function AgregarScreen() {
             <Text style={[styles.switchLabel, { color: primaryColor }]}>Marcar como Favorito</Text>
             <Text style={[styles.switchSubLabel, { color: secondaryText }]}>Aparecerá destacado en la lista</Text>
           </View>
-          <Switch 
+          <Switch
             value={favorito}
             onValueChange={setFavorito}
             trackColor={{ false: borderColor, true: accent2 }}
@@ -311,8 +326,8 @@ export default function AgregarScreen() {
           />
         </View>
 
-        <TouchableOpacity 
-          style={[styles.saveButton, { backgroundColor: primaryColor, opacity: isSaving ? 0.7 : 1 }]} 
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: primaryColor, opacity: isSaving ? 0.7 : 1 }]}
           onPress={handleSave}
           disabled={isSaving}
           activeOpacity={0.7}
@@ -324,8 +339,8 @@ export default function AgregarScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.cancelButton, { borderColor, marginTop: 12 }]} 
+        <TouchableOpacity
+          style={[styles.cancelButton, { borderColor, marginTop: 12 }]}
           onPress={handleCancel}
           disabled={isSaving}
         >

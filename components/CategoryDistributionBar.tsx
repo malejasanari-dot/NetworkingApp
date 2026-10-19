@@ -19,9 +19,10 @@ export const CategoryDistributionBar: React.FC<CategoryDistributionBarProps> = R
   const stats = useMemo(() => {
     const total = contacts.length;
     const counts: Record<string, number> = {
-      Conocidos: 0,
-      Referidos: 0,
+      'Directorio LHH': 0,
       Gestionados: 0,
+      Referidos: 0,
+      Conocidos: 0,
     };
 
     contacts.forEach(c => {
@@ -94,6 +95,8 @@ export const CategoryDistributionBar: React.FC<CategoryDistributionBarProps> = R
     </View>
   );
 });
+
+CategoryDistributionBar.displayName = 'CategoryDistributionBar';
 
 const styles = StyleSheet.create({
   container: {
