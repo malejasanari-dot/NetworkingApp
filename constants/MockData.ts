@@ -14,6 +14,7 @@ export interface Contact {
   phone?: string;
   dateAdded: string;
   directorioId?: string; // Identificador interno de origen Directorio LHH
+  linkedin?: string; // Enlace al perfil de LinkedIn
 }
 
 

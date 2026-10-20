@@ -24,6 +24,7 @@ import { useColorScheme } from '../../hooks/use-color-scheme';
 
 import { useToast } from '../../context/ToastContext';
 import { shadowStyle } from '../../utils/shadow';
+import { openLinkedInUrl, extractLinkedInUrl, isPureLinkedInNote } from '../../utils/linkedin';
 
 export default function ContactDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -73,6 +74,22 @@ export default function ContactDetailScreen() {
     () => getNotesForContact(id as string),
     [getNotesForContact, id]
   );
+
+  // Migración reactiva local si el contacto aún no tiene linkedin pero existe en notas
+  React.useEffect(() => {
+    if (contact && !contact.linkedin && contactNotes.length > 0) {
+      for (const n of contactNotes) {
+        const extUrl = extractLinkedInUrl(n.contenido);
+        if (extUrl) {
+          updateContact(contact.id, { linkedin: extUrl });
+          if (isPureLinkedInNote(n.contenido)) {
+            deleteNote(n.id);
+          }
+          break;
+        }
+      }
+    }
+  }, [contact, contactNotes, updateContact, deleteNote]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -471,6 +488,13 @@ export default function ContactDetailScreen() {
           </View>
 
           {contactNotes
+            .filter((note) => {
+              // No duplicar: ocultar notas que solo contienen el enlace de LinkedIn si el contacto ya tiene el campo
+              if (contact.linkedin && isPureLinkedInNote(note.contenido)) {
+                return false;
+              }
+              return true;
+            })
             .map((note) => {
               // Filtrar líneas de metadatos de directorio para no mostrar el ID en la interfaz
               const sanitizedContent = note.contenido
@@ -525,6 +549,29 @@ export default function ContactDetailScreen() {
               <Text style={[styles.infoText, { color: textColor }]}>{contact.phone || 'No registrado'}</Text>
             </View>
           </View>
+          {contact.linkedin ? (
+            <TouchableOpacity
+              style={[styles.infoRow, { backgroundColor: cardColor, borderColor, marginTop: 8 }]}
+              onPress={() => {
+                if (Platform.OS !== 'web') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                openLinkedInUrl(contact.linkedin);
+              }}
+              activeOpacity={0.7}
+              accessibilityRole="link"
+              accessibilityLabel="Abrir perfil de LinkedIn"
+            >
+              <Ionicons name="logo-linkedin" size={24} color="#0A66C2" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.infoLabel, { color: secondaryText }]}>LinkedIn</Text>
+                <Text style={[styles.infoText, { color: '#0A66C2', textDecorationLine: 'underline' }]} numberOfLines={1}>
+                  {contact.linkedin}
+                </Text>
+              </View>
+              <Ionicons name="open-outline" size={18} color="#0A66C2" />
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         <View style={styles.section}>

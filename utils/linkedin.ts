@@ -73,3 +73,43 @@ export async function openLinkedInUrl(url: string | null | undefined): Promise<b
     return false;
   }
 }
+
+/**
+ * Extrae una URL válida de LinkedIn si está presente en un texto (ej: "LinkedIn: https://www.linkedin.com/in/...")
+ */
+export function extractLinkedInUrl(text: string | null | undefined): string | null {
+  if (!text || typeof text !== 'string') return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  // 1. Caso directo: si el texto completo o con prefijo "LinkedIn:" es una URL válida
+  const strippedPrefix = trimmed.replace(/^linkedin\s*:\s*/i, '').trim();
+  if (isValidLinkedInUrl(strippedPrefix)) {
+    return normalizeLinkedInUrl(strippedPrefix);
+  }
+
+  // 2. Búsqueda de patrón de URL de LinkedIn dentro del texto
+  const match = trimmed.match(/(https?:\/\/[^\s]+linkedin\.com\/[^\s]+|[^\s]*linkedin\.com\/[^\s]+)/i);
+  if (match && match[1]) {
+    const candidateUrl = match[1].replace(/[.,;:)]+$/, '').trim();
+    if (isValidLinkedInUrl(candidateUrl)) {
+      return normalizeLinkedInUrl(candidateUrl);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Determina si una nota contiene EXCLUSIVAMENTE un enlace de LinkedIn
+ * (ej: "LinkedIn: https://linkedin.com/in/foo" o simplemente "https://linkedin.com/in/foo"),
+ * sin notas adicionales ni texto ajeno a LinkedIn.
+ */
+export function isPureLinkedInNote(content: string | null | undefined): boolean {
+  if (!content || typeof content !== 'string') return false;
+  const trimmed = content.trim();
+  if (!trimmed) return false;
+
+  const withoutPrefix = trimmed.replace(/^linkedin\s*:\s*/i, '').trim();
+  return isValidLinkedInUrl(withoutPrefix);
+}

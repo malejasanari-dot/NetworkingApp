@@ -8,6 +8,7 @@ import { useContacts } from '../../../context/ContactsContext';
 import { useThemeColor } from '../../../hooks/use-theme-color';
 import { parseTags, formatTags } from '../../../utils/tags';
 import { CONTACT_CATEGORIES, ContactCategory } from '../../../constants/categories';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useToast } from '../../../context/ToastContext';
 import { shadowStyle } from '../../../utils/shadow';
@@ -22,9 +23,18 @@ export default function EditarScreen() {
 
   const contact = contacts.find(c => c.id === id);
 
+  const isFromDirectory = React.useMemo(() => {
+    if (!contact) return false;
+    return Boolean(
+      contact.directorioId ||
+      (contact.tags && contact.tags.some(t => typeof t === 'string' && t.toLowerCase().startsWith('directorio_id:')))
+    );
+  }, [contact]);
+
   const [name, setName] = useState('');
   const [cargoRol, setCargoRol] = useState('');
   const [phone, setPhone] = useState('');
+  const [linkedin, setLinkedin] = useState('');
   const [empresaActual, setEmpresaActual] = useState('');
   const [empresasAnteriores, setEmpresasAnteriores] = useState<string[]>([]);
   const [tagsInput, setTagsInput] = useState('');
@@ -55,6 +65,7 @@ export default function EditarScreen() {
       setName(contact.name || '');
       setCargoRol(contact.cargoRol || '');
       setPhone(contact.phone || '');
+      setLinkedin(contact.linkedin || '');
       setEmpresaActual(contact.empresaActual || '');
       setEmpresasAnteriores(contact.empresasAnteriores || []);
       // Ocultar etiquetas internas de directorio del campo editable
@@ -63,9 +74,9 @@ export default function EditarScreen() {
       );
       setTagsInput(formatTags(visibleTags));
       setFavorito(contact.favorito || false);
-      setCategoria(contact.categoria || undefined);
+      setCategoria(isFromDirectory ? 'Directorio LHH' : (contact.categoria || undefined));
     }
-  }, [contact]);
+  }, [contact, isFromDirectory]);
 
   const isSavingRef = React.useRef(false);
 
@@ -78,27 +89,29 @@ export default function EditarScreen() {
       name: contact.name || '',
       cargoRol: contact.cargoRol || '',
       phone: contact.phone || '',
+      linkedin: contact.linkedin || '',
       empresaActual: contact.empresaActual || '',
       empresasAnteriores: contact.empresasAnteriores || [],
       tagsInput: formatTags(visibleTags),
       favorito: Boolean(contact.favorito),
-      categoria: contact.categoria || undefined,
+      categoria: isFromDirectory ? 'Directorio LHH' : (contact.categoria || undefined),
     };
-  }, [contact]);
+  }, [contact, isFromDirectory]);
 
   const hasUnsavedChanges = React.useMemo(() => {
     if (!initialValues) return false;
     const sameName = name.trim() === initialValues.name.trim();
     const sameCargoRol = cargoRol.trim() === initialValues.cargoRol.trim();
     const samePhone = phone.trim() === initialValues.phone.trim();
+    const sameLinkedin = linkedin.trim() === initialValues.linkedin.trim();
     const sameEmpresaActual = empresaActual === initialValues.empresaActual;
     const sameEmpresasAnteriores = JSON.stringify(empresasAnteriores) === JSON.stringify(initialValues.empresasAnteriores);
     const sameTags = tagsInput.trim() === initialValues.tagsInput.trim();
     const sameFavorito = favorito === initialValues.favorito;
-    const sameCategoria = categoria === initialValues.categoria;
+    const sameCategoria = isFromDirectory ? true : categoria === initialValues.categoria;
 
-    return !(sameName && sameCargoRol && samePhone && sameEmpresaActual && sameEmpresasAnteriores && sameTags && sameFavorito && sameCategoria);
-  }, [initialValues, name, cargoRol, phone, empresaActual, empresasAnteriores, tagsInput, favorito, categoria]);
+    return !(sameName && sameCargoRol && samePhone && sameLinkedin && sameEmpresaActual && sameEmpresasAnteriores && sameTags && sameFavorito && sameCategoria);
+  }, [initialValues, name, cargoRol, phone, linkedin, empresaActual, empresasAnteriores, tagsInput, favorito, categoria, isFromDirectory]);
 
   React.useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
@@ -174,16 +187,18 @@ export default function EditarScreen() {
       const tagsArray = [...internalTags, ...userTags];
 
       const compName = empresaActual ? companies.find(c => c.id === empresaActual)?.name || '' : '';
+      const finalCategoria = isFromDirectory ? 'Directorio LHH' : categoria;
 
       await updateContact(id as string, {
         name: name.trim(),
         cargoRol: cargoRol.trim() || undefined,
         phone: phone.trim(),
+        linkedin: linkedin.trim() || undefined,
         company: compName,
         empresaActual,
         empresasAnteriores,
         tags: tagsArray,
-        categoria,
+        categoria: finalCategoria,
         favorito,
       });
 
@@ -250,6 +265,20 @@ export default function EditarScreen() {
         </View>
 
         <View style={styles.formGroup}>
+          <Text style={[styles.label, { color: primaryColor }]}>URL de LinkedIn</Text>
+          <ControlledInput
+            style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
+            placeholder="Ej. https://www.linkedin.com/in/usuario"
+            keyboardType="url"
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholderTextColor={secondaryText}
+            value={linkedin}
+            onChangeText={setLinkedin}
+          />
+        </View>
+
+        <View style={styles.formGroup}>
           <CompanySelector
             label="Empresa Actual"
             value={empresaActual}
@@ -280,35 +309,59 @@ export default function EditarScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={[styles.label, { color: primaryColor }]}>Categoría</Text>
-          <View style={styles.categoryRow}>
-            {CONTACT_CATEGORIES.map(cat => {
-              const isActive = categoria === cat;
-              return (
-                <TouchableOpacity
-                  key={cat}
-                  style={[
-                    styles.categoryChip,
-                    { backgroundColor: cardColor, borderColor },
-                    isActive && { backgroundColor: primaryColor, borderColor: primaryColor },
-                  ]}
-                  onPress={() => setCategoria(isActive ? undefined : cat)}
-                >
-                  <Text
-                    style={[
-                      styles.categoryChipText,
-                      { color: primaryColor },
-                      isActive && { color: '#FFFFFF' },
-                    ]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                  >
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          <View style={styles.labelRow}>
+            <Text style={[styles.label, { color: primaryColor, marginBottom: 0 }]}>Categoría</Text>
+            {isFromDirectory && (
+              <View style={[styles.lockedBadge, { backgroundColor: primaryColor + '12' }]}>
+                <Ionicons name="lock-closed" size={12} color={primaryColor} />
+                <Text style={[styles.lockedText, { color: primaryColor }]}>Fija por Directorio LHH</Text>
+              </View>
+            )}
           </View>
+          {isFromDirectory ? (
+            <View style={[styles.protectedCategoryCard, { backgroundColor: primaryColor + '08', borderColor: primaryColor + '30' }]}>
+              <View style={styles.protectedCategoryHeader}>
+                <View style={[styles.categoryChip, { backgroundColor: primaryColor, borderColor: primaryColor, flex: 0, paddingHorizontal: 16, minWidth: 0 }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="lock-closed" size={13} color="#FFFFFF" />
+                    <Text style={[styles.categoryChipText, { color: '#FFFFFF' }]}>Directorio LHH</Text>
+                  </View>
+                </View>
+              </View>
+              <Text style={[styles.protectedCategoryHelp, { color: secondaryText }]}>
+                Este contacto fue incorporado desde el Directorio LHH. La categoría «Directorio LHH» está protegida y se conserva de forma permanente.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.categoryRow}>
+              {CONTACT_CATEGORIES.map(cat => {
+                const isActive = categoria === cat;
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[
+                      styles.categoryChip,
+                      { backgroundColor: cardColor, borderColor },
+                      isActive && { backgroundColor: primaryColor, borderColor: primaryColor },
+                    ]}
+                    onPress={() => setCategoria(isActive ? undefined : cat)}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryChipText,
+                        { color: primaryColor },
+                        isActive && { color: '#FFFFFF' },
+                      ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         <View style={[styles.switchGroup, { backgroundColor: cardColor, borderColor }]}>
@@ -458,5 +511,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  lockedText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  protectedCategoryCard: {
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+  },
+  protectedCategoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  protectedCategoryHelp: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

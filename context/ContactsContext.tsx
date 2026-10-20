@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { Contact, MOCK_CONTACTS } from '../constants/MockData';
 import { generateId } from '../utils/id';
 import { CONTACT_CATEGORIES } from '../constants/categories';
+import { extractLinkedInUrl, isPureLinkedInNote } from '../utils/linkedin';
 
 interface ContactsContextData {
   contacts: Contact[];
@@ -22,15 +23,18 @@ const STORAGE_KEY = '@personal_networking_contacts';
 const LEGACY_EXTRA_FIELDS_KEY = '@personal_networking_contacts_extra';
 const USER_EXTRA_FIELDS_KEY = (userId: string) => `@personal_networking_contacts_extra_${userId}`;
 const MIGRATION_FLAG_KEY = (userId: string) => `@contacts_migrated_to_supabase_${userId}`;
+const LINKEDIN_MIGRATION_FLAG_KEY = (userId: string) => `@contacts_linkedin_migrated_${userId}`;
 
 export interface ContactExtra {
   cargoRol?: string;
   directorioId?: string;
+  linkedin?: string;
   syncedWithDb?: boolean;
 }
 
 let isCargoRolSupportedInDb = false;
 let isDirectorioIdSupportedInDb = false;
+let isLinkedinSupportedInDb = false;
 let hasCheckedDbColumns = false;
 
 const isColumnNotFoundError = (err: any): boolean => {
@@ -43,13 +47,14 @@ const isColumnNotFoundError = (err: any): boolean => {
   return false;
 };
 
-export const checkDbColumnsSupport = async (forceRefresh = false): Promise<{ cargoRol: boolean; directorioId: boolean }> => {
+export const checkDbColumnsSupport = async (forceRefresh = false): Promise<{ cargoRol: boolean; directorioId: boolean; linkedin: boolean }> => {
   if (hasCheckedDbColumns && !forceRefresh) {
-    return { cargoRol: isCargoRolSupportedInDb, directorioId: isDirectorioIdSupportedInDb };
+    return { cargoRol: isCargoRolSupportedInDb, directorioId: isDirectorioIdSupportedInDb, linkedin: isLinkedinSupportedInDb };
   }
 
   let cargoCheckCompleted = false;
   let dirCheckCompleted = false;
+  let liCheckCompleted = false;
 
   try {
     const { error: cargoError } = await supabase.from('contacts').select('cargo_rol').limit(1);
@@ -82,12 +87,27 @@ export const checkDbColumnsSupport = async (forceRefresh = false): Promise<{ car
     console.warn('[checkDbColumnsSupport] Excepción de red verificando directorio_id:', err?.message);
   }
 
-  // Solo consideramos la verificación definitiva si ambas consultas obtuvieron respuesta concluyente
-  if (cargoCheckCompleted && dirCheckCompleted) {
+  try {
+    const { error: liError } = await supabase.from('contacts').select('linkedin').limit(1);
+    if (!liError) {
+      isLinkedinSupportedInDb = true;
+      liCheckCompleted = true;
+    } else if (isColumnNotFoundError(liError)) {
+      isLinkedinSupportedInDb = false;
+      liCheckCompleted = true;
+    } else {
+      console.warn('[checkDbColumnsSupport] Advertencia verificando linkedin:', liError.message);
+    }
+  } catch (err: any) {
+    console.warn('[checkDbColumnsSupport] Excepción de red verificando linkedin:', err?.message);
+  }
+
+  // Solo consideramos la verificación definitiva si todas las consultas obtuvieron respuesta concluyente
+  if (cargoCheckCompleted && dirCheckCompleted && liCheckCompleted) {
     hasCheckedDbColumns = true;
   }
 
-  return { cargoRol: isCargoRolSupportedInDb, directorioId: isDirectorioIdSupportedInDb };
+  return { cargoRol: isCargoRolSupportedInDb, directorioId: isDirectorioIdSupportedInDb, linkedin: isLinkedinSupportedInDb };
 };
 
 const getStoredExtraFields = async (userId?: string): Promise<Record<string, ContactExtra>> => {
@@ -161,6 +181,7 @@ const mapRowToContact = (row: any, localExtras?: Record<string, any>): Contact =
     phone: row.phone || undefined,
     dateAdded: row.date_added || new Date().toISOString(),
     directorioId: row.directorio_id || extra.directorioId || undefined,
+    linkedin: row.linkedin || extra.linkedin || undefined,
   };
 };
 
@@ -186,6 +207,9 @@ const mapContactToRow = (contact: Partial<Contact>, userId: string) => {
   }
   if (isDirectorioIdSupportedInDb && contact.directorioId !== undefined) {
     row.directorio_id = contact.directorioId || null;
+  }
+  if (isLinkedinSupportedInDb && contact.linkedin !== undefined) {
+    row.linkedin = contact.linkedin || null;
   }
 
   return row;
@@ -348,6 +372,131 @@ const migrateLocalContactsIfNeeded = async (userId: string, currentDbContacts: a
   }
 };
 
+const migrateNotesLinkedInIfNeeded = async (
+  userId: string,
+  currentContacts: Contact[],
+  localExtras: Record<string, ContactExtra>
+): Promise<Contact[]> => {
+  try {
+    const isCompleted = await AsyncStorage.getItem(LINKEDIN_MIGRATION_FLAG_KEY(userId));
+    if (isCompleted === 'true') {
+      return currentContacts;
+    }
+
+    // 1. Obtener notas de Supabase para este usuario
+    let dbNotes: any[] = [];
+    try {
+      const { data } = await supabase
+        .from('notes')
+        .select('id, contacto_id, contenido')
+        .eq('user_id', userId);
+      if (data && Array.isArray(data)) dbNotes = data;
+    } catch {}
+
+    // 2. Obtener notas almacenadas localmente
+    let localNotes: any[] = [];
+    try {
+      const storedNotesStr = await AsyncStorage.getItem('@personal_networking_notes');
+      if (storedNotesStr) {
+        const parsed = JSON.parse(storedNotesStr);
+        if (Array.isArray(parsed)) localNotes = parsed;
+      }
+    } catch {}
+
+    const allNotes = [
+      ...dbNotes.map(n => ({ id: n.id, contactoId: n.contacto_id, contenido: n.contenido })),
+      ...localNotes.map(n => ({ id: n.id, contactoId: n.contactoId, contenido: n.contenido })),
+    ];
+
+    let hasChanges = false;
+    const notesToDeleteFromDb: string[] = [];
+    const notesToDeleteLocalIds = new Set<string>();
+
+    const updatedContacts = currentContacts.map(contact => {
+      if (contact.linkedin) {
+        return contact;
+      }
+
+      // Buscar en las notas asociadas al contacto
+      const notesForThisContact = allNotes.filter(n => n.contactoId === contact.id);
+      let foundUrl: string | null = null;
+      let pureNoteId: string | null = null;
+
+      for (const note of notesForThisContact) {
+        const extracted = extractLinkedInUrl(note.contenido);
+        if (extracted) {
+          foundUrl = extracted;
+          if (isPureLinkedInNote(note.contenido)) {
+            pureNoteId = note.id;
+          }
+          break;
+        }
+      }
+
+      // Si no se encontró en notas estructuradas, verificar si está en el campo legacy contact.notes
+      if (!foundUrl && contact.notes) {
+        const extractedFromLegacy = extractLinkedInUrl(contact.notes);
+        if (extractedFromLegacy) {
+          foundUrl = extractedFromLegacy;
+          if (isPureLinkedInNote(contact.notes)) {
+            contact.notes = undefined;
+            hasChanges = true;
+          }
+        }
+      }
+
+      if (foundUrl) {
+        hasChanges = true;
+        contact.linkedin = foundUrl;
+
+        localExtras[contact.id] = {
+          ...localExtras[contact.id],
+          linkedin: foundUrl,
+          syncedWithDb: isLinkedinSupportedInDb,
+        };
+
+        if (pureNoteId) {
+          notesToDeleteFromDb.push(pureNoteId);
+          notesToDeleteLocalIds.add(pureNoteId);
+        }
+      }
+
+      return contact;
+    });
+
+    if (hasChanges) {
+      await saveStoredExtraFields(userId, localExtras);
+
+      // Eliminar notas puras de LinkedIn en Supabase de forma segura
+      if (notesToDeleteFromDb.length > 0) {
+        try {
+          await supabase
+            .from('notes')
+            .delete()
+            .in('id', notesToDeleteFromDb)
+            .eq('user_id', userId);
+        } catch (e) {
+          console.warn('[ContactsContext] Advertencia eliminando notas puras de LinkedIn en Supabase:', e);
+        }
+      }
+
+      // Eliminar notas puras de LinkedIn en almacenamiento local
+      if (notesToDeleteLocalIds.size > 0 && localNotes.length > 0) {
+        try {
+          const filteredLocal = localNotes.filter(n => !notesToDeleteLocalIds.has(n.id));
+          await AsyncStorage.setItem('@personal_networking_notes', JSON.stringify(filteredLocal));
+        } catch {}
+      }
+    }
+
+    await AsyncStorage.setItem(LINKEDIN_MIGRATION_FLAG_KEY(userId), 'true');
+    return updatedContacts;
+  } catch (err) {
+    console.warn('[ContactsContext] Error en migración de LinkedIn desde notas:', err);
+    return currentContacts;
+  }
+};
+
 export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -385,10 +534,13 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       let finalRows = data || [];
       finalRows = await migrateLocalContactsIfNeeded(user.id, finalRows);
 
-      setContacts(finalRows.map(row => mapRowToContact(row, localExtras)));
+      let mappedContacts = finalRows.map(row => mapRowToContact(row, localExtras));
+      mappedContacts = await migrateNotesLinkedInIfNeeded(user.id, mappedContacts, localExtras);
+
+      setContacts(mappedContacts);
 
       // Sincronización segura en segundo plano hacia Supabase si las columnas están disponibles
-      if (isCargoRolSupportedInDb || isDirectorioIdSupportedInDb) {
+      if (isCargoRolSupportedInDb || isDirectorioIdSupportedInDb || isLinkedinSupportedInDb) {
         let hasExtrasChanged = false;
         const syncTasks: Promise<void>[] = [];
 
@@ -397,10 +549,16 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           if (!extra) continue;
 
           // 1. Si Supabase ya tiene el dato en la columna remota, alinear localExtras y marcar como sincronizado
-          if (row.cargo_rol || row.directorio_id) {
-            if (!extra.syncedWithDb || (row.cargo_rol && extra.cargoRol !== row.cargo_rol) || (row.directorio_id && extra.directorioId !== row.directorio_id)) {
+          if (row.cargo_rol || row.directorio_id || row.linkedin) {
+            if (
+              !extra.syncedWithDb ||
+              (row.cargo_rol && extra.cargoRol !== row.cargo_rol) ||
+              (row.directorio_id && extra.directorioId !== row.directorio_id) ||
+              (row.linkedin && extra.linkedin !== row.linkedin)
+            ) {
               if (row.cargo_rol) extra.cargoRol = row.cargo_rol;
               if (row.directorio_id) extra.directorioId = row.directorio_id;
+              if (row.linkedin) extra.linkedin = row.linkedin;
               extra.syncedWithDb = true;
               hasExtrasChanged = true;
             }
@@ -420,6 +578,9 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           }
           if (isDirectorioIdSupportedInDb && !row.directorio_id && extra.directorioId) {
             payload.directorio_id = extra.directorioId;
+          }
+          if (isLinkedinSupportedInDb && !row.linkedin && extra.linkedin) {
+            payload.linkedin = extra.linkedin;
           }
 
           if (Object.keys(payload).length > 0) {
@@ -490,12 +651,13 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     // Persistir en caché local aislada por usuario
-    if (newContact.cargoRol || newContact.directorioId) {
+    if (newContact.cargoRol || newContact.directorioId || newContact.linkedin) {
       const extras = await getStoredExtraFields(user.id);
       extras[newContact.id] = {
         cargoRol: newContact.cargoRol,
         directorioId: newContact.directorioId,
-        syncedWithDb: isCargoRolSupportedInDb && isDirectorioIdSupportedInDb,
+        linkedin: newContact.linkedin,
+        syncedWithDb: isCargoRolSupportedInDb && isDirectorioIdSupportedInDb && isLinkedinSupportedInDb,
       };
       await saveStoredExtraFields(user.id, extras);
     }
@@ -546,11 +708,12 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           .single();
 
         if (!error) {
-          if (newContact.cargoRol || newContact.directorioId) {
+          if (newContact.cargoRol || newContact.directorioId || newContact.linkedin) {
             extras[newContact.id] = {
               cargoRol: newContact.cargoRol,
               directorioId: newContact.directorioId,
-              syncedWithDb: isCargoRolSupportedInDb && isDirectorioIdSupportedInDb,
+              linkedin: newContact.linkedin,
+              syncedWithDb: isCargoRolSupportedInDb && isDirectorioIdSupportedInDb && isLinkedinSupportedInDb,
             };
           }
           newInsertedContacts.unshift(insertedData ? mapRowToContact(insertedData, extras) : newContact);
@@ -580,18 +743,37 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     await checkDbColumnsSupport();
 
-    if (updatedData.cargoRol !== undefined || updatedData.directorioId !== undefined) {
+    // Protección de categoría para contactos originados en el Directorio LHH:
+    // La categoría "Directorio LHH" no puede ser alterada ni eliminada.
+    const targetContact = contacts.find(c => c.id === id);
+    const isFromDirectory = Boolean(
+      targetContact?.directorioId ||
+      updatedData.directorioId ||
+      (targetContact?.tags && targetContact.tags.some(t => typeof t === 'string' && t.toLowerCase().startsWith('directorio_id:')))
+    );
+
+    const safeUpdatedData = { ...updatedData };
+    if (isFromDirectory) {
+      safeUpdatedData.categoria = 'Directorio LHH';
+    }
+
+    if (
+      safeUpdatedData.cargoRol !== undefined ||
+      safeUpdatedData.directorioId !== undefined ||
+      safeUpdatedData.linkedin !== undefined
+    ) {
       const extras = await getStoredExtraFields(user.id);
       extras[id] = {
         ...extras[id],
-        ...(updatedData.cargoRol !== undefined ? { cargoRol: updatedData.cargoRol || undefined } : {}),
-        ...(updatedData.directorioId !== undefined ? { directorioId: updatedData.directorioId || undefined } : {}),
-        syncedWithDb: isCargoRolSupportedInDb && isDirectorioIdSupportedInDb,
+        ...(safeUpdatedData.cargoRol !== undefined ? { cargoRol: safeUpdatedData.cargoRol || undefined } : {}),
+        ...(safeUpdatedData.directorioId !== undefined ? { directorioId: safeUpdatedData.directorioId || undefined } : {}),
+        ...(safeUpdatedData.linkedin !== undefined ? { linkedin: safeUpdatedData.linkedin || undefined } : {}),
+        syncedWithDb: isCargoRolSupportedInDb && isDirectorioIdSupportedInDb && isLinkedinSupportedInDb,
       };
       await saveStoredExtraFields(user.id, extras);
     }
 
-    const rowUpdate = mapContactToRow(updatedData, user.id);
+    const rowUpdate = mapContactToRow(safeUpdatedData, user.id);
     delete rowUpdate.id;
 
     const { error } = await supabase
@@ -607,9 +789,9 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     setContacts(prev => {
       const current = Array.isArray(prev) ? prev : [];
-      return current.map(c => (c && c.id === id ? { ...c, ...updatedData } : c));
+      return current.map(c => (c && c.id === id ? { ...c, ...safeUpdatedData } : c));
     });
-  }, [user]);
+  }, [user, contacts]);
 
   const deleteContact = useCallback(async (id: string) => {
     if (!user?.id) return;

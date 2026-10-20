@@ -88,11 +88,14 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
 
         {/* Informaciones principales */}
         <View style={styles.infoContainer}>
-          {/* Nivel 1: Nombre + Recordatorio */}
+          {/* Nivel 1: Nombre + Indicadores */}
           <View style={styles.nameRow}>
             <Text style={[styles.nameText, { color: primaryColor }]} numberOfLines={1}>
               {contact.name}
             </Text>
+            {Boolean(contact.linkedin) && (
+              <Ionicons name="logo-linkedin" size={13} color="#0A66C2" style={styles.reminderIcon} />
+            )}
             {hasReminders && (
               <Ionicons name="notifications" size={13} color={accent1} style={styles.reminderIcon} />
             )}

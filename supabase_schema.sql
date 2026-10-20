@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS public.contacts (
   notes TEXT,
   phone TEXT,
   categoria TEXT DEFAULT NULL,
+  linkedin TEXT,
   date_added TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -77,6 +78,7 @@ ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS completado BOOLEAN DEFAULT
 ALTER TABLE public.reminders ADD COLUMN IF NOT EXISTS notificacion_id TEXT;
 ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS cargo_rol TEXT;
 ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS directorio_id TEXT;
+ALTER TABLE public.contacts ADD COLUMN IF NOT EXISTS linkedin TEXT;
 
 
 -- ==============================================================================

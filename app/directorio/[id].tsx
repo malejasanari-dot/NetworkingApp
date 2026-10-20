@@ -1,33 +1,33 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Platform,
-  Alert,
-} from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  CandidateDirectoryItem,
-  getCachedCandidate,
-  findCandidateById,
-  formatCandidateYear,
-} from '../../services/directoryApi';
+  ActivityIndicator,
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { getCandidateInitials } from '../../components/DirectoryCandidateCard';
-import { useThemeColor } from '../../hooks/use-theme-color';
-import { useColorScheme } from '../../hooks/use-color-scheme';
-import { shadowStyle } from '../../utils/shadow';
-import { isValidLinkedInUrl, openLinkedInUrl } from '../../utils/linkedin';
-import { useContacts } from '../../context/ContactsContext';
+import { Nota } from '../../constants/MockData';
 import { useCompanies } from '../../context/CompaniesContext';
+import { useContacts } from '../../context/ContactsContext';
 import { useNotes } from '../../context/NotesContext';
 import { useToast } from '../../context/ToastContext';
-import { Nota } from '../../constants/MockData';
+import { useColorScheme } from '../../hooks/use-color-scheme';
+import { useThemeColor } from '../../hooks/use-theme-color';
+import {
+  CandidateDirectoryItem,
+  findCandidateById,
+  formatCandidateYear,
+  getCachedCandidate,
+} from '../../services/directoryApi';
+import { isValidLinkedInUrl, openLinkedInUrl } from '../../utils/linkedin';
+import { shadowStyle } from '../../utils/shadow';
 
 export default function CandidateDetailScreen() {
   const router = useRouter();
@@ -45,7 +45,7 @@ export default function CandidateDetailScreen() {
 
   const { contacts, addContact } = useContacts();
   const { companies, syncContactCompanies } = useCompanies();
-  const { addNote, getNotesForContact } = useNotes();
+  const { getNotesForContact } = useNotes();
   const toast = useToast();
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -150,6 +150,7 @@ export default function CandidateDetailScreen() {
       const candLi = candidate.linkedin.trim().toLowerCase();
       const matchByLinkedIn = contacts.find((c) => {
         if (c.categoria === 'Directorio LHH') {
+          if (c.linkedin && c.linkedin.trim().toLowerCase() === candLi) return true;
           const notesOfContact = getNotesForContact(c.id);
           const hasLiNote = notesOfContact.some((n: Nota) => n.contenido.toLowerCase().includes(candLi));
           const hasLiInDirectNotes = typeof c.notes === 'string' && c.notes.toLowerCase().includes(candLi);
@@ -211,7 +212,7 @@ export default function CandidateDetailScreen() {
         }
       }
 
-      // Guardar candidato como Contacto con categoría "Directorio LHH", cargoRol y empresas
+      // Guardar candidato como Contacto con categoría "Directorio LHH", cargoRol, linkedin y empresas
       const newContact = await addContact({
         name: candidate.nombreCompleto.trim(),
         cargoRol: candidate.cargo?.trim() || undefined,
@@ -223,6 +224,7 @@ export default function CandidateDetailScreen() {
         notes: undefined,
         favorito: false,
         directorioId: String(candidate.idSistema),
+        linkedin: candidate.linkedin?.trim() || undefined,
       });
 
       if (empresaId && newContact?.id) {
@@ -230,19 +232,6 @@ export default function CandidateDetailScreen() {
           await syncContactCompanies(newContact.id, empresaId, []);
         } catch {
           // No bloquear si la vinculación de empresa falla
-        }
-      }
-
-      // Guardar enlace de LinkedIn exclusivamente en notas del contacto
-      if (candidate.linkedin && candidate.linkedin.trim() && newContact?.id) {
-        try {
-          await addNote({
-            contactoId: newContact.id,
-            contenido: `LinkedIn: ${candidate.linkedin.trim()}`,
-            fecha: new Date().toISOString(),
-          });
-        } catch {
-          // No bloquear si la nota de LinkedIn falla
         }
       }
 

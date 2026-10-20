@@ -25,6 +25,7 @@ export default function AgregarScreen() {
   const [name, setName] = useState('');
   const [cargoRol, setCargoRol] = useState('');
   const [phone, setPhone] = useState('');
+  const [linkedin, setLinkedin] = useState('');
   const [empresaActual, setEmpresaActual] = useState('');
   const [empresasAnteriores, setEmpresasAnteriores] = useState<string[]>([]);
   const [tagsInput, setTagsInput] = useState('');
@@ -56,6 +57,7 @@ export default function AgregarScreen() {
     setName('');
     setCargoRol('');
     setPhone('');
+    setLinkedin('');
     setEmpresaActual('');
     setEmpresasAnteriores([]);
     setTagsInput('');
@@ -68,6 +70,7 @@ export default function AgregarScreen() {
     name.trim() ||
     cargoRol.trim() ||
     phone.trim() ||
+    linkedin.trim() ||
     empresaActual ||
     (empresasAnteriores && empresasAnteriores.length > 0) ||
     tagsInput.trim() ||
@@ -153,6 +156,7 @@ export default function AgregarScreen() {
         name: name.trim(),
         cargoRol: cargoRol.trim() || undefined,
         phone: phone.trim(),
+        linkedin: linkedin.trim() || undefined,
         company: compName,
         empresaActual,
         empresasAnteriores,
@@ -234,6 +238,20 @@ export default function AgregarScreen() {
             placeholderTextColor={secondaryText}
             value={phone}
             onChangeText={setPhone}
+          />
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={[styles.label, { color: primaryColor }]}>URL de LinkedIn</Text>
+          <ControlledInput
+            style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
+            placeholder="Ej. https://www.linkedin.com/in/usuario"
+            keyboardType="url"
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholderTextColor={secondaryText}
+            value={linkedin}
+            onChangeText={setLinkedin}
           />
         </View>
 
