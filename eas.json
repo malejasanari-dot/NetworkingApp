@@ -14,13 +14,17 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_USE_PRECOMPILED_MODULES": "0"
+        "EXPO_USE_PRECOMPILED_MODULES": "0",
+        "EXPO_PUBLIC_API_URL": "https://networking-app-backend-e80t.onrender.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://networking-app-backend-e80t.onrender.com"
       }
     }
   },
