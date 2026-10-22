@@ -172,10 +172,9 @@ export default function EditarEmpresaScreen() {
         toast.success('Empresa actualizada correctamente');
         router.back();
       } catch (error: any) {
-        toast.error(error?.message || 'No se pudo actualizar la empresa.');
-      } finally {
         setIsSaving(false);
         isSavingRef.current = false;
+        toast.error(error?.message || 'No se pudo actualizar la empresa.');
       }
     }
   };

@@ -207,10 +207,9 @@ export default function EditarScreen() {
       toast.success('Contacto actualizado correctamente');
       router.back();
     } catch (error: any) {
-      toast.error(error?.message || 'No se pudo actualizar el contacto.');
-    } finally {
       setIsSaving(false);
       isSavingRef.current = false;
+      toast.error(error?.message || 'No se pudo actualizar el contacto.');
     }
   };
 
@@ -321,7 +320,7 @@ export default function EditarScreen() {
           {isFromDirectory ? (
             <View style={[styles.protectedCategoryCard, { backgroundColor: primaryColor + '08', borderColor: primaryColor + '30' }]}>
               <View style={styles.protectedCategoryHeader}>
-                <View style={[styles.categoryChip, { backgroundColor: primaryColor, borderColor: primaryColor, flex: 0, paddingHorizontal: 16, minWidth: 0 }]}>
+                <View style={[styles.protectedCategoryChip, { backgroundColor: primaryColor, borderColor: primaryColor }]}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Ionicons name="lock-closed" size={13} color="#FFFFFF" />
                     <Text style={[styles.categoryChipText, { color: '#FFFFFF' }]}>Directorio LHH</Text>
@@ -516,11 +515,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 6,
     marginBottom: 8,
   },
   lockedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -540,8 +542,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  protectedCategoryChip: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   protectedCategoryHelp: {
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 20,
+    letterSpacing: 0.2,
+    marginTop: 4,
   },
 });

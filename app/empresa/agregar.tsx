@@ -108,10 +108,9 @@ export default function AgregarEmpresaScreen() {
       toast.success('Empresa creada correctamente');
       router.back();
     } catch (error: any) {
-      toast.error(error?.message || 'No se pudo guardar la empresa.');
-    } finally {
       setIsSaving(false);
       isSavingRef.current = false;
+      toast.error(error?.message || 'No se pudo guardar la empresa.');
     }
   };
 
