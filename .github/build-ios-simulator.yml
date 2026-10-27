@@ -1,0 +1,109 @@
+name: iOS Simulator Build (GitHub)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-simulator
+  cancel-in-progress: false
+
+jobs:
+  build-simulator:
+    name: Build iOS Simulator with EAS Local
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Expo and EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Verify Expo authentication
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Falta el secreto EXPO_TOKEN en GitHub."
+            exit 1
+          fi
+          eas whoami
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Check simulator profile
+        run: |
+          node -e "
+            const eas = require('./eas.json');
+            if (!eas.build?.simulator?.ios?.simulator) {
+              console.error('Falta build.simulator.ios.simulator=true en eas.json');
+              process.exit(1);
+            }
+          "
+
+      - name: Build simulator app
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_USE_PRECOMPILED_MODULES: "0"
+          EXPO_PUBLIC_API_URL: https://networking-app-backend-e80t.onrender.com
+        run: |
+          mkdir -p build/simulator
+
+          set +e
+          eas build \
+            --platform ios \
+            --profile simulator \
+            --local \
+            --non-interactive \
+            --output ./build/simulator/NetworkingApp-Simulator.tar.gz \
+            2>&1 | tee build-simulator.log
+
+          BUILD_EXIT_CODE="${PIPESTATUS[0]}"
+          set -e
+
+          if [ "$BUILD_EXIT_CODE" -ne 0 ]; then
+            echo "::error::Falló la compilación del simulador."
+            cat build-simulator.log
+            exit "$BUILD_EXIT_CODE"
+          fi
+
+      - name: Verify simulator artifact
+        run: |
+          ARCHIVE="build/simulator/NetworkingApp-Simulator.tar.gz"
+
+          if [ ! -s "$ARCHIVE" ]; then
+            echo "::error::No se generó el archivo del simulador."
+            exit 1
+          fi
+
+          echo "Contenido del archivo:"
+          tar -tzf "$ARCHIVE" | head -40
+
+          if ! tar -tzf "$ARCHIVE" | grep -q '\.app/'; then
+            echo "::error::No se encontró una aplicación .app en el archivo."
+            exit 1
+          fi
+
+      - name: Upload simulator artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NetworkingApp-iOS-Simulator
+          path: |
+            build/simulator/NetworkingApp-Simulator.tar.gz
+            build-simulator.log
+          if-no-files-found: error
+          retention-days: 14

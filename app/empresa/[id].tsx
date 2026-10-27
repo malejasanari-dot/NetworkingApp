@@ -112,6 +112,7 @@ export default function EmpresaDetailScreen() {
             <ContactCard 
               key={contact.id} 
               contact={contact} 
+              showFavorite={false}
               onPress={() => router.push(`/contacto/${contact.id}`)} 
             />
           ))

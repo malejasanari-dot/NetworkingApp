@@ -22,9 +22,15 @@ interface ContactCardProps {
   contact: Contact;
   onPress?: () => void;
   onToggleFavorite?: () => void;
+  showFavorite?: boolean;
 }
 
-export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, onPress, onToggleFavorite }) => {
+export const ContactCard: React.FC<ContactCardProps> = React.memo(({
+  contact,
+  onPress,
+  onToggleFavorite,
+  showFavorite = true,
+}) => {
   const { getRemindersForContact } = useReminders();
   const toast = useToast();
   const colorScheme = useColorScheme() ?? 'light';
@@ -74,6 +80,8 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
   const categoryColorMap = colorScheme === 'dark' ? CATEGORY_COLORS_DARK : CATEGORY_COLORS;
   const categoryColor = contact.categoria ? categoryColorMap[contact.categoria] : primaryColor;
 
+  const canShowFavorite = Boolean(showFavorite && onToggleFavorite);
+
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: cardColor, borderColor }]}
@@ -87,7 +95,7 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
         </View>
 
         {/* Informaciones principales */}
-        <View style={styles.infoContainer}>
+        <View style={[styles.infoContainer, !canShowFavorite && styles.infoContainerFull]}>
           {/* Nivel 1: Nombre + Indicadores */}
           <View style={styles.nameRow}>
             <Text style={[styles.nameText, { color: primaryColor }]} numberOfLines={1}>
@@ -138,19 +146,21 @@ export const ContactCard: React.FC<ContactCardProps> = React.memo(({ contact, on
         </View>
 
         {/* Botón Favorito */}
-        <TouchableOpacity
-          onPress={handleToggleFavorite}
-          style={styles.favoriteButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Animated.View style={animatedStyle}>
-            <Ionicons
-              name={contact.favorito ? "star" : "star-outline"}
-              size={22}
-              color={contact.favorito ? accent2 : secondaryText}
-            />
-          </Animated.View>
-        </TouchableOpacity>
+        {canShowFavorite && (
+          <TouchableOpacity
+            onPress={handleToggleFavorite}
+            style={styles.favoriteButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Animated.View style={animatedStyle}>
+              <Ionicons
+                name={contact.favorito ? "star" : "star-outline"}
+                size={22}
+                color={contact.favorito ? accent2 : secondaryText}
+              />
+            </Animated.View>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -188,6 +198,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     marginRight: 6,
+  },
+  infoContainerFull: {
+    marginRight: 0,
   },
   nameRow: {
     flexDirection: 'row',
