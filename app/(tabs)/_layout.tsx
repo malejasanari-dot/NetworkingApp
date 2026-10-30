@@ -47,8 +47,11 @@ export default function TabLayout() {
   const isMainScreen = getCurrentTabIndex(pathname) !== -1;
 
   const handleFABAddContact = useCallback(() => {
-    router.push('/agregar');
-  }, [router]);
+    router.push({
+      pathname: '/agregar',
+      params: { from: pathname },
+    });
+  }, [router, pathname]);
 
   const handleFABAddCompany = useCallback(() => {
     router.push('/empresa/agregar');
@@ -93,27 +96,33 @@ export default function TabLayout() {
     }
   }, [pathname, router]);
 
-  // Gesto horizontal para navegar entre las pestañas
+  // Gesto horizontal para navegar entre las pestañas (exclusivo para plataformas móviles con validación de dominancia horizontal)
   const panGesture = useMemo(() => {
+    // En Web se desactiva totalmente para permitir selección de texto con ratón y evitar conflictos con trackpad
+    const isGestureEnabled = Platform.OS !== 'web' && isMainScreen;
     // Delimitar el área activa del gesto excluyendo completamente la zona física del Tab Bar inferior
     const bottomCutoff = -(55 + (insets.bottom || 0));
 
     return Gesture.Pan()
-      .enabled(isMainScreen)
+      .enabled(isGestureEnabled)
       .hitSlop({ bottom: bottomCutoff })
-      .activeOffsetX([-35, 35])
-      .failOffsetY([-15, 15])
+      .activeOffsetX([-45, 45])
+      .failOffsetY([-25, 25])
       .cancelsTouchesInView(false)
       .onEnd((e) => {
         'worklet';
-        const { translationX, velocityX } = e;
-        const isFastSwipe = Math.abs(velocityX) > 300;
-        const isLongSwipe = Math.abs(translationX) > 60;
+        const { translationX, translationY, velocityX, velocityY } = e;
+        // Exigir dominancia horizontal clara para evitar disparos accidentales durante scroll vertical
+        const isHorizontalDominant =
+          Math.abs(translationX) > Math.abs(translationY) * 1.5 &&
+          Math.abs(velocityX) > Math.abs(velocityY);
+        const isSignificantHorizontal = Math.abs(translationX) > 60;
+        const isNotVerticalScroll = Math.abs(translationY) < 40;
 
-        if (isFastSwipe || isLongSwipe) {
-          if (translationX < -35 && velocityX < -100) {
+        if (isHorizontalDominant && isSignificantHorizontal && isNotVerticalScroll) {
+          if (translationX < -60 && velocityX < -150) {
             runOnJS(handleTabSwipe)('left');
-          } else if (translationX > 35 && velocityX > 100) {
+          } else if (translationX > 60 && velocityX > 150) {
             runOnJS(handleTabSwipe)('right');
           }
         }

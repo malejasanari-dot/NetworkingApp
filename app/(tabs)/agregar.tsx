@@ -4,7 +4,7 @@ import { ControlledInput } from '../../components/ui/controlled-input';
 import { CompanySelector } from '../../components/CompanySelector';
 import { useCompanies } from '../../context/CompaniesContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useNavigation } from 'expo-router';
+import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
 import { useContacts } from '../../context/ContactsContext';
 import { useNotes } from '../../context/NotesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
@@ -17,6 +17,7 @@ import { shadowStyle } from '../../utils/shadow';
 export default function AgregarScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const toast = useToast();
   const { addContact } = useContacts();
   const { addNote } = useNotes();
@@ -107,6 +108,18 @@ export default function AgregarScreen() {
   }, [navigation, hasUnsavedChanges]);
 
   const handleCancel = () => {
+    const navigateBack = () => {
+      isSavingRef.current = true;
+      resetForm();
+      if (from && typeof from === 'string' && from !== '/agregar' && from !== '/(tabs)/agregar') {
+        router.replace(from as any);
+      } else if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.push('/contactos');
+      }
+    };
+
     if (hasUnsavedChanges) {
       Alert.alert(
         "¿Deseas salir sin guardar los cambios?",
@@ -116,25 +129,12 @@ export default function AgregarScreen() {
           {
             text: "Salir sin guardar",
             style: "destructive",
-            onPress: () => {
-              isSavingRef.current = true;
-              resetForm();
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.push('/contactos');
-              }
-            }
+            onPress: navigateBack,
           }
         ]
       );
     } else {
-      resetForm();
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.push('/contactos');
-      }
+      navigateBack();
     }
   };
 

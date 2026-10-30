@@ -133,7 +133,7 @@ export function CustomTabBar({ style }: CustomTabBarProps) {
               accessibilityRole="tab"
               accessibilityState={{ selected: isFocused }}
               accessibilityLabel={tab.name}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              hitSlop={{ top: 6, bottom: 6 }}
             >
               <View style={styles.iconWrapper}>
                 <Ionicons name={iconName} size={24} color={color} />
