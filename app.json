@@ -22,7 +22,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "networking.app.lhh"
+      "package": "networking.app.lhh",
+      "versionCode": 4
     },
     "web": {
       "output": "static",
