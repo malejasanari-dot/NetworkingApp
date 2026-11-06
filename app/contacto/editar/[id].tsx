@@ -4,6 +4,7 @@ import { ControlledInput } from '../../../components/ui/controlled-input';
 import { CompanySelector } from '../../../components/CompanySelector';
 import { useCompanies } from '../../../context/CompaniesContext';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
+import { usePreventRemove } from '@react-navigation/native';
 import { useContacts } from '../../../context/ContactsContext';
 import { useThemeColor } from '../../../hooks/use-theme-color';
 import { parseTags, formatTags } from '../../../utils/tags';
@@ -113,31 +114,27 @@ export default function EditarScreen() {
     return !(sameName && sameCargoRol && samePhone && sameLinkedin && sameEmpresaActual && sameEmpresasAnteriores && sameTags && sameFavorito && sameCategoria);
   }, [initialValues, name, cargoRol, phone, linkedin, empresaActual, empresasAnteriores, tagsInput, favorito, categoria, isFromDirectory]);
 
-  React.useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      if (!hasUnsavedChanges || isSavingRef.current) {
-        return;
-      }
-      e.preventDefault();
-      Alert.alert(
-        "¿Deseas salir sin guardar los cambios?",
-        "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
-        [
-          { text: "Seguir editando", style: "cancel" },
-          {
-            text: "Salir sin guardar",
-            style: "destructive",
-            onPress: () => {
-              isSavingRef.current = true;
-              navigation.dispatch(e.data.action);
-            },
+  usePreventRemove(hasUnsavedChanges, ({ data }) => {
+    if (isSavingRef.current) {
+      navigation.dispatch(data.action);
+      return;
+    }
+    Alert.alert(
+      "¿Deseas salir sin guardar los cambios?",
+      "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
+      [
+        { text: "Seguir editando", style: "cancel" },
+        {
+          text: "Salir sin guardar",
+          style: "destructive",
+          onPress: () => {
+            isSavingRef.current = true;
+            navigation.dispatch(data.action);
           },
-        ]
-      );
-    });
-
-    return unsubscribe;
-  }, [navigation, hasUnsavedChanges]);
+        },
+      ]
+    );
+  });
 
   if (!contact) {
     return (

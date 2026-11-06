@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter, useNavigation } from 'expo-router';
+import { usePreventRemove } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -91,31 +92,27 @@ export default function EditarPerfilScreen() {
   }, [initialValues, name, title, company, pendingAvatarUri, pendingAvatarBase64]);
 
   // D-018: Protección con beforeRemove (Swipe back, botón físico, navegación nativa)
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      if (!hasUnsavedChanges || isSavingRef.current) {
-        return;
-      }
-      e.preventDefault();
-      Alert.alert(
-        '¿Deseas salir sin guardar los cambios?',
-        'Si sales ahora, se perderán las modificaciones que no hayas guardado.',
-        [
-          { text: 'Seguir editando', style: 'cancel' },
-          {
-            text: 'Salir sin guardar',
-            style: 'destructive',
-            onPress: () => {
-              isSavingRef.current = true;
-              navigation.dispatch(e.data.action);
-            },
+  usePreventRemove(hasUnsavedChanges, ({ data }) => {
+    if (isSavingRef.current) {
+      navigation.dispatch(data.action);
+      return;
+    }
+    Alert.alert(
+      '¿Deseas salir sin guardar los cambios?',
+      'Si sales ahora, se perderán las modificaciones que no hayas guardado.',
+      [
+        { text: 'Seguir editando', style: 'cancel' },
+        {
+          text: 'Salir sin guardar',
+          style: 'destructive',
+          onPress: () => {
+            isSavingRef.current = true;
+            navigation.dispatch(data.action);
           },
-        ]
-      );
-    });
-
-    return unsubscribe;
-  }, [navigation, hasUnsavedChanges]);
+        },
+      ]
+    );
+  });
 
   // D-018: Handler para botón Cancelar
   const handleCancel = () => {

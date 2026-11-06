@@ -5,6 +5,7 @@ import { CompanySelector } from '../../components/CompanySelector';
 import { useCompanies } from '../../context/CompaniesContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
+import { usePreventRemove } from '@react-navigation/native';
 import { useContacts } from '../../context/ContactsContext';
 import { useNotes } from '../../context/NotesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
@@ -80,32 +81,28 @@ export default function AgregarScreen() {
     categoria
   );
 
-  React.useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      if (!hasUnsavedChanges || isSavingRef.current) {
-        return;
-      }
-      e.preventDefault();
-      Alert.alert(
-        "¿Deseas salir sin guardar los cambios?",
-        "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
-        [
-          { text: "Seguir editando", style: "cancel" },
-          {
-            text: "Salir sin guardar",
-            style: "destructive",
-            onPress: () => {
-              isSavingRef.current = true;
-              resetForm();
-              navigation.dispatch(e.data.action);
-            },
+  usePreventRemove(hasUnsavedChanges, ({ data }) => {
+    if (isSavingRef.current) {
+      navigation.dispatch(data.action);
+      return;
+    }
+    Alert.alert(
+      "¿Deseas salir sin guardar los cambios?",
+      "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
+      [
+        { text: "Seguir editando", style: "cancel" },
+        {
+          text: "Salir sin guardar",
+          style: "destructive",
+          onPress: () => {
+            isSavingRef.current = true;
+            resetForm();
+            navigation.dispatch(data.action);
           },
-        ]
-      );
-    });
-
-    return unsubscribe;
-  }, [navigation, hasUnsavedChanges]);
+        },
+      ]
+    );
+  });
 
   const handleCancel = () => {
     const navigateBack = () => {

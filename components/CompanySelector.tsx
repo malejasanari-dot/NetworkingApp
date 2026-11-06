@@ -135,7 +135,7 @@ export function CompanySelector({
                   <Text style={[styles.companyName, { color: secondaryText, fontStyle: 'italic' }]}>Sin empresa</Text>
                   {value === '' && <Ionicons name="checkmark" size={20} color={primaryColor} />}
                 </TouchableOpacity>
-              ) : null
+              ) : undefined
             }
             renderItem={({ item }) => {
               const isSelected = multiple ? (Array.isArray(value) && value.includes(item.id)) : value === item.id;

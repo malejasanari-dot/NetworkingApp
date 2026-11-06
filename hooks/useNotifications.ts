@@ -77,7 +77,7 @@ export function useNotifications(): UseNotificationsReturn {
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>(
     Notifications ? 'checking' : 'undetermined'
   );
-  const appState = useRef<AppStateStatus>(AppState.currentState);
+  const appState = useRef<AppStateStatus>((AppState.currentState as AppStateStatus) ?? 'unknown');
 
   // Consultar el estado actual del permiso
   const refreshStatus = useCallback(async () => {

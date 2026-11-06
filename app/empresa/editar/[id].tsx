@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { ControlledInput } from '../../../components/ui/controlled-input';
 import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
+import { usePreventRemove } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../../context/CompaniesContext';
 import { useContacts } from '../../../context/ContactsContext';
@@ -83,31 +84,27 @@ export default function EditarEmpresaScreen() {
     );
   }, [initialValues, name, sectorId, notes]);
 
-  React.useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      if (!hasUnsavedChanges || isSavingRef.current) {
-        return;
-      }
-      e.preventDefault();
-      Alert.alert(
-        "¿Deseas salir sin guardar los cambios?",
-        "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
-        [
-          { text: "Seguir editando", style: "cancel" },
-          {
-            text: "Salir sin guardar",
-            style: "destructive",
-            onPress: () => {
-              isSavingRef.current = true;
-              navigation.dispatch(e.data.action);
-            },
+  usePreventRemove(hasUnsavedChanges, ({ data }) => {
+    if (isSavingRef.current) {
+      navigation.dispatch(data.action);
+      return;
+    }
+    Alert.alert(
+      "¿Deseas salir sin guardar los cambios?",
+      "Si sales ahora, se perderán las modificaciones que no hayas guardado.",
+      [
+        { text: "Seguir editando", style: "cancel" },
+        {
+          text: "Salir sin guardar",
+          style: "destructive",
+          onPress: () => {
+            isSavingRef.current = true;
+            navigation.dispatch(data.action);
           },
-        ]
-      );
-    });
-
-    return unsubscribe;
-  }, [navigation, hasUnsavedChanges]);
+        },
+      ]
+    );
+  });
 
   const handleCancel = () => {
     if (hasUnsavedChanges) {
