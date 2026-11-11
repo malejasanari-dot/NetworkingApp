@@ -283,12 +283,12 @@ const styles = StyleSheet.create({
   },
   lhhLogo: {
     width: 165,
-    height: 75,
+    height: 67,
     marginBottom: 20,
   },
   lhhLogoCompact: {
     width: 135,
-    height: 60,
+    height: 55,
     marginBottom: 12,
   },
   title: {

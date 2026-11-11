@@ -10,8 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter, useNavigation } from 'expo-router';
-import { usePreventRemove } from '@react-navigation/native';
+import { useRouter, useNavigation, usePreventRemove } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,7 +19,6 @@ import { ControlledInput } from '../../components/ui/controlled-input';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { useToast } from '../../context/ToastContext';
-import { MOCK_PROFILE } from '../../constants/MockData';
 import { shadowStyle } from '../../utils/shadow';
 
 export default function EditarPerfilScreen() {
@@ -36,6 +34,7 @@ export default function EditarPerfilScreen() {
   const [pendingAvatarBase64, setPendingAvatarBase64] = useState<string | null>(null);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmedExit, setIsConfirmedExit] = useState(false);
   const isSavingRef = useRef(false);
 
   const backgroundColor = useThemeColor({}, 'background');
@@ -55,28 +54,36 @@ export default function EditarPerfilScreen() {
     });
   }, [navigation, backgroundColor, primaryColor]);
 
-  // Cargar datos iniciales del perfil
+  // Cargar datos iniciales del perfil real (sin valores mock)
   useEffect(() => {
-    const currentName = profile?.name || (user?.user_metadata?.name as string) || MOCK_PROFILE.name;
-    const currentTitle = profile?.title || MOCK_PROFILE.title;
-    const currentCompany = profile?.company || MOCK_PROFILE.company;
+    const currentName =
+      profile?.name?.trim() ||
+      (user?.user_metadata?.name as string | undefined)?.trim() ||
+      (user?.user_metadata?.full_name as string | undefined)?.trim() ||
+      '';
+    const currentTitle = profile?.title?.trim() || '';
+    const currentCompany = profile?.company?.trim() || '';
 
-    setName(currentName || '');
-    setTitle(currentTitle || '');
-    setCompany(currentCompany || '');
+    setName(currentName);
+    setTitle(currentTitle);
+    setCompany(currentCompany);
     setPendingAvatarUri(null);
     setPendingAvatarBase64(null);
   }, [profile, user]);
 
   const initialValues = useMemo(() => {
-    const currentName = profile?.name || (user?.user_metadata?.name as string) || MOCK_PROFILE.name;
-    const currentTitle = profile?.title || MOCK_PROFILE.title;
-    const currentCompany = profile?.company || MOCK_PROFILE.company;
+    const currentName =
+      profile?.name?.trim() ||
+      (user?.user_metadata?.name as string | undefined)?.trim() ||
+      (user?.user_metadata?.full_name as string | undefined)?.trim() ||
+      '';
+    const currentTitle = profile?.title?.trim() || '';
+    const currentCompany = profile?.company?.trim() || '';
 
     return {
-      name: (currentName || '').trim(),
-      title: (currentTitle || '').trim(),
-      company: (currentCompany || '').trim(),
+      name: currentName,
+      title: currentTitle,
+      company: currentCompany,
     };
   }, [profile, user]);
 
@@ -91,10 +98,13 @@ export default function EditarPerfilScreen() {
     return !(sameName && sameTitle && sameCompany && sameAvatar);
   }, [initialValues, name, title, company, pendingAvatarUri, pendingAvatarBase64]);
 
-  // D-018: Protección con beforeRemove (Swipe back, botón físico, navegación nativa)
-  usePreventRemove(hasUnsavedChanges, ({ data }) => {
+  // D-018: Protección con usePreventRemove de Expo Router (Swipe back, botón físico, navegación nativa)
+  const shouldPreventRemove = hasUnsavedChanges && !isSaving && !isConfirmedExit;
+
+  const disablePrevention = usePreventRemove(shouldPreventRemove, ({ repeat }) => {
     if (isSavingRef.current) {
-      navigation.dispatch(data.action);
+      setIsConfirmedExit(true);
+      repeat();
       return;
     }
     Alert.alert(
@@ -107,7 +117,8 @@ export default function EditarPerfilScreen() {
           style: 'destructive',
           onPress: () => {
             isSavingRef.current = true;
-            navigation.dispatch(data.action);
+            setIsConfirmedExit(true);
+            repeat();
           },
         },
       ]
@@ -127,6 +138,8 @@ export default function EditarPerfilScreen() {
             style: 'destructive',
             onPress: () => {
               isSavingRef.current = true;
+              setIsConfirmedExit(true);
+              disablePrevention();
               router.back();
             },
           },
@@ -222,6 +235,7 @@ export default function EditarPerfilScreen() {
         return;
       }
 
+      disablePrevention();
       toast.success('Perfil actualizado correctamente');
       router.back();
     } catch (error: any) {
@@ -318,7 +332,7 @@ export default function EditarPerfilScreen() {
           <Text style={[styles.label, { color: primaryColor }]}>Nombre completo *</Text>
           <ControlledInput
             style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
-            placeholder="Ej. María Ariza"
+            placeholder="Ej. Ana García"
             placeholderTextColor={secondaryText}
             value={name}
             onChangeText={setName}
@@ -331,7 +345,7 @@ export default function EditarPerfilScreen() {
           <Text style={[styles.label, { color: primaryColor }]}>Cargo o Especialidad</Text>
           <ControlledInput
             style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
-            placeholder="Ej. Senior Product Manager"
+            placeholder="Ej. Gerente de Operaciones"
             placeholderTextColor={secondaryText}
             value={title}
             onChangeText={setTitle}
@@ -344,7 +358,7 @@ export default function EditarPerfilScreen() {
           <Text style={[styles.label, { color: primaryColor }]}>Empresa u Organización</Text>
           <ControlledInput
             style={[styles.input, { backgroundColor: cardColor, borderColor, color: textColor }]}
-            placeholder="Ej. Global Enterprises"
+            placeholder="Ej. Empresa S.A."
             placeholderTextColor={secondaryText}
             value={company}
             onChangeText={setCompany}

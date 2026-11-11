@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { ControlledInput } from '../../components/ui/controlled-input';
-import { useRouter, useNavigation } from 'expo-router';
-import { usePreventRemove } from '@react-navigation/native';
+import { useRouter, useNavigation, usePreventRemove } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../context/CompaniesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
@@ -21,6 +20,7 @@ export default function AgregarEmpresaScreen() {
   const [sectorId, setSectorId] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmedExit, setIsConfirmedExit] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -43,9 +43,12 @@ export default function AgregarEmpresaScreen() {
 
   const hasUnsavedChanges = Boolean(name.trim() || sectorId !== null || notes.trim());
 
-  usePreventRemove(hasUnsavedChanges, ({ data }) => {
+  const shouldPreventRemove = hasUnsavedChanges && !isSaving && !isConfirmedExit;
+
+  const disablePrevention = usePreventRemove(shouldPreventRemove, ({ repeat }) => {
     if (isSavingRef.current) {
-      navigation.dispatch(data.action);
+      setIsConfirmedExit(true);
+      repeat();
       return;
     }
     Alert.alert(
@@ -58,7 +61,8 @@ export default function AgregarEmpresaScreen() {
           style: "destructive",
           onPress: () => {
             isSavingRef.current = true;
-            navigation.dispatch(data.action);
+            setIsConfirmedExit(true);
+            repeat();
           },
         },
       ]
@@ -77,6 +81,8 @@ export default function AgregarEmpresaScreen() {
             style: "destructive", 
             onPress: () => {
               isSavingRef.current = true;
+              setIsConfirmedExit(true);
+              disablePrevention();
               router.back();
             } 
           }
@@ -102,6 +108,7 @@ export default function AgregarEmpresaScreen() {
         sectorId,
         notes: notes.trim(),
       });
+      disablePrevention();
       toast.success('Empresa creada correctamente');
       router.back();
     } catch (error: any) {

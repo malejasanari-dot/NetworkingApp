@@ -4,13 +4,12 @@ import { ControlledInput } from '../../components/ui/controlled-input';
 import { CompanySelector } from '../../components/CompanySelector';
 import { useCompanies } from '../../context/CompaniesContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useNavigation, useLocalSearchParams } from 'expo-router';
-import { usePreventRemove } from '@react-navigation/native';
+import { useRouter, useNavigation, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { useContacts } from '../../context/ContactsContext';
 import { useNotes } from '../../context/NotesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { parseTags } from '../../utils/tags';
-import { CONTACT_CATEGORIES, ContactCategory } from '../../constants/categories';
+import { MANUAL_CONTACT_CATEGORIES, ContactCategory, stripReservedDirectoryTags } from '../../constants/categories';
 
 import { useToast } from '../../context/ToastContext';
 import { shadowStyle } from '../../utils/shadow';
@@ -81,9 +80,11 @@ export default function AgregarScreen() {
     categoria
   );
 
-  usePreventRemove(hasUnsavedChanges, ({ data }) => {
+  const shouldPreventRemove = hasUnsavedChanges && !isSaving;
+
+  const disablePrevention = usePreventRemove(shouldPreventRemove, ({ repeat }) => {
     if (isSavingRef.current) {
-      navigation.dispatch(data.action);
+      repeat();
       return;
     }
     Alert.alert(
@@ -95,9 +96,8 @@ export default function AgregarScreen() {
           text: "Salir sin guardar",
           style: "destructive",
           onPress: () => {
-            isSavingRef.current = true;
             resetForm();
-            navigation.dispatch(data.action);
+            repeat();
           },
         },
       ]
@@ -106,7 +106,9 @@ export default function AgregarScreen() {
 
   const handleCancel = () => {
     const navigateBack = () => {
-      isSavingRef.current = true;
+      if (hasUnsavedChanges) {
+        disablePrevention();
+      }
       resetForm();
       if (from && typeof from === 'string' && from !== '/agregar' && from !== '/(tabs)/agregar') {
         router.replace(from as any);
@@ -145,7 +147,7 @@ export default function AgregarScreen() {
     setIsSaving(true);
     isSavingRef.current = true;
     try {
-      const tagsArray = parseTags(tagsInput);
+      const tagsArray = stripReservedDirectoryTags(parseTags(tagsInput));
 
       const compName = empresaActual ? companies.find(c => c.id === empresaActual)?.name || '' : '';
 
@@ -176,6 +178,7 @@ export default function AgregarScreen() {
       toast.success('Contacto guardado correctamente');
 
       resetForm();
+      disablePrevention();
       router.push('/contactos');
     } catch (error: any) {
       toast.error(error?.message || 'No se pudo guardar el contacto.');
@@ -299,7 +302,7 @@ export default function AgregarScreen() {
         <View style={styles.formGroup}>
           <Text style={[styles.label, { color: primaryColor }]}>Categoría</Text>
           <View style={styles.categoryRow}>
-            {CONTACT_CATEGORIES.map(cat => {
+            {MANUAL_CONTACT_CATEGORIES.map(cat => {
               const isActive = categoria === cat;
               return (
                 <TouchableOpacity

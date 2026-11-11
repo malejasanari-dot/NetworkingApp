@@ -43,7 +43,7 @@ export default function CandidateDetailScreen() {
   const primaryColor = useThemeColor({}, 'primary');
   const borderColor = useThemeColor({}, 'border');
 
-  const { contacts, addContact } = useContacts();
+  const { contacts, addContactFromDirectory } = useContacts();
   const { companies, syncContactCompanies } = useCompanies();
   const { getNotesForContact } = useNotes();
   const toast = useToast();
@@ -213,7 +213,7 @@ export default function CandidateDetailScreen() {
       }
 
       // Guardar candidato como Contacto con categoría "Directorio LHH", cargoRol, linkedin y empresas
-      const newContact = await addContact({
+      const newContact = await addContactFromDirectory({
         name: candidate.nombreCompleto.trim(),
         cargoRol: candidate.cargo?.trim() || undefined,
         company: candidate.empresa?.trim() || undefined,

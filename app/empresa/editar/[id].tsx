@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { ControlledInput } from '../../../components/ui/controlled-input';
-import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
-import { usePreventRemove } from '@react-navigation/native';
+import { useRouter, useLocalSearchParams, useNavigation, usePreventRemove } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../../context/CompaniesContext';
 import { useContacts } from '../../../context/ContactsContext';
@@ -24,6 +23,7 @@ export default function EditarEmpresaScreen() {
   const [sectorId, setSectorId] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmedExit, setIsConfirmedExit] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -84,9 +84,12 @@ export default function EditarEmpresaScreen() {
     );
   }, [initialValues, name, sectorId, notes]);
 
-  usePreventRemove(hasUnsavedChanges, ({ data }) => {
+  const shouldPreventRemove = hasUnsavedChanges && !isSaving && !isConfirmedExit;
+
+  const disablePrevention = usePreventRemove(shouldPreventRemove, ({ repeat }) => {
     if (isSavingRef.current) {
-      navigation.dispatch(data.action);
+      setIsConfirmedExit(true);
+      repeat();
       return;
     }
     Alert.alert(
@@ -99,7 +102,8 @@ export default function EditarEmpresaScreen() {
           style: "destructive",
           onPress: () => {
             isSavingRef.current = true;
-            navigation.dispatch(data.action);
+            setIsConfirmedExit(true);
+            repeat();
           },
         },
       ]
@@ -118,6 +122,8 @@ export default function EditarEmpresaScreen() {
             style: "destructive", 
             onPress: () => {
               isSavingRef.current = true;
+              setIsConfirmedExit(true);
+              disablePrevention();
               router.back();
             } 
           }
@@ -166,6 +172,7 @@ export default function EditarEmpresaScreen() {
           }
         }
 
+        disablePrevention();
         toast.success('Empresa actualizada correctamente');
         router.back();
       } catch (error: any) {

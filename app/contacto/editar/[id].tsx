@@ -3,12 +3,18 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, KeyboardA
 import { ControlledInput } from '../../../components/ui/controlled-input';
 import { CompanySelector } from '../../../components/CompanySelector';
 import { useCompanies } from '../../../context/CompaniesContext';
-import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
-import { usePreventRemove } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter, useNavigation, usePreventRemove } from 'expo-router';
 import { useContacts } from '../../../context/ContactsContext';
 import { useThemeColor } from '../../../hooks/use-theme-color';
 import { parseTags, formatTags } from '../../../utils/tags';
-import { CONTACT_CATEGORIES, ContactCategory } from '../../../constants/categories';
+import {
+  MANUAL_CONTACT_CATEGORIES,
+  DIRECTORY_CATEGORY,
+  ContactCategory,
+  hasValidDirectoryOrigin,
+  isReservedDirectoryTag,
+  stripReservedDirectoryTags,
+} from '../../../constants/categories';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useToast } from '../../../context/ToastContext';
@@ -24,13 +30,7 @@ export default function EditarScreen() {
 
   const contact = contacts.find(c => c.id === id);
 
-  const isFromDirectory = React.useMemo(() => {
-    if (!contact) return false;
-    return Boolean(
-      contact.directorioId ||
-      (contact.tags && contact.tags.some(t => typeof t === 'string' && t.toLowerCase().startsWith('directorio_id:')))
-    );
-  }, [contact]);
+  const isFromDirectory = React.useMemo(() => hasValidDirectoryOrigin(contact), [contact]);
 
   const [name, setName] = useState('');
   const [cargoRol, setCargoRol] = useState('');
@@ -42,6 +42,7 @@ export default function EditarScreen() {
   const [favorito, setFavorito] = useState(false);
   const [categoria, setCategoria] = useState<ContactCategory | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmedExit, setIsConfirmedExit] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -75,7 +76,11 @@ export default function EditarScreen() {
       );
       setTagsInput(formatTags(visibleTags));
       setFavorito(contact.favorito || false);
-      setCategoria(isFromDirectory ? 'Directorio LHH' : (contact.categoria || undefined));
+      setCategoria(
+        isFromDirectory
+          ? DIRECTORY_CATEGORY
+          : (contact.categoria === DIRECTORY_CATEGORY ? undefined : (contact.categoria || undefined))
+      );
     }
   }, [contact, isFromDirectory]);
 
@@ -95,7 +100,9 @@ export default function EditarScreen() {
       empresasAnteriores: contact.empresasAnteriores || [],
       tagsInput: formatTags(visibleTags),
       favorito: Boolean(contact.favorito),
-      categoria: isFromDirectory ? 'Directorio LHH' : (contact.categoria || undefined),
+      categoria: isFromDirectory
+        ? DIRECTORY_CATEGORY
+        : (contact.categoria === DIRECTORY_CATEGORY ? undefined : (contact.categoria || undefined)),
     };
   }, [contact, isFromDirectory]);
 
@@ -114,9 +121,12 @@ export default function EditarScreen() {
     return !(sameName && sameCargoRol && samePhone && sameLinkedin && sameEmpresaActual && sameEmpresasAnteriores && sameTags && sameFavorito && sameCategoria);
   }, [initialValues, name, cargoRol, phone, linkedin, empresaActual, empresasAnteriores, tagsInput, favorito, categoria, isFromDirectory]);
 
-  usePreventRemove(hasUnsavedChanges, ({ data }) => {
+  const shouldPreventRemove = hasUnsavedChanges && !isSaving && !isConfirmedExit;
+
+  const disablePrevention = usePreventRemove(shouldPreventRemove, ({ repeat }) => {
     if (isSavingRef.current) {
-      navigation.dispatch(data.action);
+      setIsConfirmedExit(true);
+      repeat();
       return;
     }
     Alert.alert(
@@ -129,7 +139,8 @@ export default function EditarScreen() {
           style: "destructive",
           onPress: () => {
             isSavingRef.current = true;
-            navigation.dispatch(data.action);
+            setIsConfirmedExit(true);
+            repeat();
           },
         },
       ]
@@ -159,6 +170,8 @@ export default function EditarScreen() {
             style: "destructive",
             onPress: () => {
               isSavingRef.current = true;
+              setIsConfirmedExit(true);
+              disablePrevention();
               router.back();
             }
           }
@@ -179,12 +192,14 @@ export default function EditarScreen() {
     setIsSaving(true);
     isSavingRef.current = true;
     try {
-      const userTags = parseTags(tagsInput);
-      const internalTags = (contact.tags || []).filter(t => t.toLowerCase().startsWith('directorio_id:'));
+      const userTags = stripReservedDirectoryTags(parseTags(tagsInput));
+      const internalTags = (contact.tags || []).filter(isReservedDirectoryTag);
       const tagsArray = [...internalTags, ...userTags];
 
       const compName = empresaActual ? companies.find(c => c.id === empresaActual)?.name || '' : '';
-      const finalCategoria = isFromDirectory ? 'Directorio LHH' : categoria;
+      const finalCategoria = isFromDirectory
+        ? DIRECTORY_CATEGORY
+        : (categoria === DIRECTORY_CATEGORY ? undefined : categoria);
 
       await updateContact(id as string, {
         name: name.trim(),
@@ -201,6 +216,7 @@ export default function EditarScreen() {
 
       await syncContactCompanies(id as string, empresaActual, empresasAnteriores);
 
+      disablePrevention();
       toast.success('Contacto actualizado correctamente');
       router.back();
     } catch (error: any) {
@@ -330,7 +346,7 @@ export default function EditarScreen() {
             </View>
           ) : (
             <View style={styles.categoryRow}>
-              {CONTACT_CATEGORIES.map(cat => {
+              {MANUAL_CONTACT_CATEGORIES.map(cat => {
                 const isActive = categoria === cat;
                 return (
                   <TouchableOpacity

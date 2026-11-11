@@ -3,7 +3,6 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Platform }
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { MOCK_PROFILE } from '../../constants/MockData';
 import { useContacts } from '../../context/ContactsContext';
 import { useCompanies } from '../../context/CompaniesContext';
 import { useNotes } from '../../context/NotesContext';
@@ -84,16 +83,23 @@ export default function PerfilScreen() {
     return Math.min(100, Math.max(0, Math.round((favoritesCount / totalContacts) * 100)));
   }, [favoritesCount, totalContacts]);
 
-  // Nombre y cargo dinámicos del perfil real
-  const displayName = profile?.name || (user?.user_metadata?.name as string) || MOCK_PROFILE.name;
+  // Nombre y cargo dinámicos del perfil real (sin fallback a MOCK_PROFILE)
+  const resolvedName = (
+    profile?.name?.trim() ||
+    (user?.user_metadata?.name as string | undefined)?.trim() ||
+    (user?.user_metadata?.full_name as string | undefined)?.trim() ||
+    ''
+  );
+  const displayName = resolvedName || user?.email?.split('@')[0] || 'Usuario';
+  const displayInitial = (resolvedName || user?.email?.trim() || 'U').charAt(0).toUpperCase();
   const displayTitle = useMemo(() => {
-    const title = profile?.title || (profile === null ? MOCK_PROFILE.title : '');
-    const company = profile?.company || (profile === null ? MOCK_PROFILE.company : '');
+    const title = profile?.title?.trim() || '';
+    const company = profile?.company?.trim() || '';
 
     if (title && company) return `${title} en ${company}`;
     if (title) return title;
     if (company) return company;
-    return `${MOCK_PROFILE.title} en ${MOCK_PROFILE.company}`;
+    return 'Configura tu cargo en Editar Perfil';
   }, [profile]);
 
   // Colores de tema
@@ -144,7 +150,7 @@ export default function PerfilScreen() {
             />
           ) : (
             <Text style={[styles.avatarText, { color: primaryColor }]}>
-              {displayName.charAt(0).toUpperCase()}
+              {displayInitial}
             </Text>
           )}
         </View>

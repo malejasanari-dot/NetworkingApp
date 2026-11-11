@@ -4,12 +4,19 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { Contact, MOCK_CONTACTS } from '../constants/MockData';
 import { generateId } from '../utils/id';
-import { CONTACT_CATEGORIES } from '../constants/categories';
+import {
+  CONTACT_CATEGORIES,
+  DIRECTORY_CATEGORY,
+  hasValidDirectoryOrigin,
+  isReservedDirectoryTag,
+  stripReservedDirectoryTags,
+} from '../constants/categories';
 import { extractLinkedInUrl, isPureLinkedInNote } from '../utils/linkedin';
 
 interface ContactsContextData {
   contacts: Contact[];
   addContact: (contact: Omit<Contact, 'id' | 'dateAdded'>) => Promise<Contact>;
+  addContactFromDirectory: (contact: Omit<Contact, 'id' | 'dateAdded'> & { directorioId: string }) => Promise<Contact>;
   importContacts: (newContacts: Omit<Contact, 'id' | 'dateAdded'>[]) => Promise<{ imported: number, skipped: number }>;
   updateContact: (id: string, updatedData: Partial<Contact>) => Promise<void>;
   deleteContact: (id: string) => Promise<void>;
@@ -625,18 +632,12 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadContacts();
   }, [loadContacts]);
 
-  const addContact = useCallback(async (newContactData: Omit<Contact, 'id' | 'dateAdded'>): Promise<Contact> => {
+  const insertContactRecord = useCallback(async (newContact: Contact): Promise<Contact> => {
     if (!user?.id) {
       throw new Error('Usuario no autenticado');
     }
 
     await checkDbColumnsSupport();
-
-    const newContact: Contact = {
-      ...newContactData,
-      id: generateId(),
-      dateAdded: new Date().toISOString(),
-    };
 
     const row = mapContactToRow(newContact, user.id);
     const { data, error } = await supabase
@@ -670,6 +671,39 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return insertedContact;
   }, [user]);
 
+  const addContact = useCallback(async (newContactData: Omit<Contact, 'id' | 'dateAdded'>): Promise<Contact> => {
+    const newContact: Contact = {
+      ...newContactData,
+      directorioId: undefined,
+      tags: stripReservedDirectoryTags(newContactData.tags),
+      categoria: newContactData.categoria === DIRECTORY_CATEGORY ? undefined : newContactData.categoria,
+      id: generateId(),
+      dateAdded: new Date().toISOString(),
+    };
+    return insertContactRecord(newContact);
+  }, [insertContactRecord]);
+
+  const addContactFromDirectory = useCallback(async (
+    directoryContactData: Omit<Contact, 'id' | 'dateAdded'> & { directorioId: string }
+  ): Promise<Contact> => {
+    const cleanDirectorioId = typeof directoryContactData.directorioId === 'string'
+      ? directoryContactData.directorioId.trim()
+      : '';
+    if (!cleanDirectorioId) {
+      throw new Error('Identificador de origen del Directorio LHH inválido.');
+    }
+
+    const newContact: Contact = {
+      ...directoryContactData,
+      directorioId: cleanDirectorioId,
+      tags: stripReservedDirectoryTags(directoryContactData.tags),
+      categoria: DIRECTORY_CATEGORY,
+      id: generateId(),
+      dateAdded: new Date().toISOString(),
+    };
+    return insertContactRecord(newContact);
+  }, [insertContactRecord]);
+
   const importContacts = useCallback(async (newContactsData: Omit<Contact, 'id' | 'dateAdded'>[]) => {
     if (!user?.id) {
       return { imported: 0, skipped: 0 };
@@ -696,6 +730,9 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (!isDuplicate) {
         const newContact: Contact = {
           ...data,
+          directorioId: undefined,
+          tags: stripReservedDirectoryTags(data.tags),
+          categoria: data.categoria === DIRECTORY_CATEGORY ? undefined : data.categoria,
           id: generateId(index),
           dateAdded: now,
         };
@@ -743,18 +780,31 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     await checkDbColumnsSupport();
 
-    // Protección de categoría para contactos originados en el Directorio LHH:
-    // La categoría "Directorio LHH" no puede ser alterada ni eliminada.
+    // La procedencia del Directorio se determina estrictamente desde el contacto persistido,
+    // nunca desde datos entrantes de una actualización.
     const targetContact = contacts.find(c => c.id === id);
-    const isFromDirectory = Boolean(
-      targetContact?.directorioId ||
-      updatedData.directorioId ||
-      (targetContact?.tags && targetContact.tags.some(t => typeof t === 'string' && t.toLowerCase().startsWith('directorio_id:')))
-    );
+    const isFromDirectory = hasValidDirectoryOrigin(targetContact);
 
-    const safeUpdatedData = { ...updatedData };
+    const safeUpdatedData: Partial<Contact> = { ...updatedData };
+    delete safeUpdatedData.directorioId;
+
+    if (safeUpdatedData.tags !== undefined) {
+      const cleanUserTags = stripReservedDirectoryTags(safeUpdatedData.tags);
+      if (isFromDirectory) {
+        const preservedInternalTags = (targetContact?.tags || []).filter(isReservedDirectoryTag);
+        safeUpdatedData.tags = [...preservedInternalTags, ...cleanUserTags];
+      } else {
+        safeUpdatedData.tags = cleanUserTags;
+      }
+    }
+
     if (isFromDirectory) {
-      safeUpdatedData.categoria = 'Directorio LHH';
+      safeUpdatedData.categoria = DIRECTORY_CATEGORY;
+    } else if (safeUpdatedData.categoria === DIRECTORY_CATEGORY) {
+      safeUpdatedData.categoria =
+        targetContact?.categoria && targetContact.categoria !== DIRECTORY_CATEGORY
+          ? targetContact.categoria
+          : undefined;
     }
 
     if (
@@ -850,12 +900,13 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const value = useMemo(() => ({
     contacts,
     addContact,
+    addContactFromDirectory,
     importContacts,
     updateContact,
     deleteContact,
     refreshContacts,
     isLoading,
-  }), [contacts, addContact, importContacts, updateContact, deleteContact, refreshContacts, isLoading]);
+  }), [contacts, addContact, addContactFromDirectory, importContacts, updateContact, deleteContact, refreshContacts, isLoading]);
 
   return (
     <ContactsContext.Provider value={value}>

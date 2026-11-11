@@ -1,9 +1,14 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { MOCK_PROFILE } from '../constants/MockData';
 
 import { decodeBase64ToArrayBuffer } from '../utils/base64';
+
+const getAuthMetadataName = (currentUser: User): string => {
+  const meta = currentUser.user_metadata;
+  const rawName = (meta?.name || meta?.full_name || '') as string;
+  return typeof rawName === 'string' ? rawName.trim() : '';
+};
 
 export interface UserProfile {
   id: string;
@@ -45,13 +50,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (error && error.code === 'PGRST116') {
-        // Registro de perfil no existe todavía, crear con datos base
+        // Registro de perfil no existe todavía, crear con datos reales base (sin valores mock)
         const initialProfile: UserProfile = {
           id: currentUser.id,
           email: currentUser.email || '',
-          name: (currentUser.user_metadata?.name as string) || (currentUser.email ? currentUser.email.split('@')[0] : MOCK_PROFILE.name),
-          title: MOCK_PROFILE.title,
-          company: MOCK_PROFILE.company,
+          name: getAuthMetadataName(currentUser),
+          title: '',
+          company: '',
           avatar_url: null,
         };
         const { data: createdData, error: insertError } = await supabase
@@ -72,9 +77,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile({
           id: currentUser.id,
           email: currentUser.email || '',
-          name: (currentUser.user_metadata?.name as string) || MOCK_PROFILE.name,
-          title: MOCK_PROFILE.title,
-          company: MOCK_PROFILE.company,
+          name: getAuthMetadataName(currentUser),
+          title: '',
+          company: '',
           avatar_url: null,
         });
       }
@@ -83,9 +88,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile({
         id: currentUser.id,
         email: currentUser.email || '',
-        name: (currentUser.user_metadata?.name as string) || MOCK_PROFILE.name,
-        title: MOCK_PROFILE.title,
-        company: MOCK_PROFILE.company,
+        name: getAuthMetadataName(currentUser),
+        title: '',
+        company: '',
         avatar_url: null,
       });
     }

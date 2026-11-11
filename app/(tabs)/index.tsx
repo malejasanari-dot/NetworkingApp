@@ -10,7 +10,6 @@ import { useCompanies } from '../../context/CompaniesContext';
 import { useReminders } from '../../context/RemindersContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { formatDate } from '../../utils/date';
-import { MOCK_PROFILE } from '../../constants/MockData';
 import { StatsDonutChart } from '../../components/StatsDonutChart';
 import { CategoryDistributionBar } from '../../components/CategoryDistributionBar';
 import { shadowStyle } from '../../utils/shadow';
@@ -234,30 +233,45 @@ export default function HomeScreen() {
       >
         <View style={styles.innerContainer}>
           {/* 1. Encabezado elegante y compacto */}
-          <View style={styles.userHeader}>
-          <View style={[styles.avatar, { backgroundColor: primaryColor + '15', borderColor: primaryColor }]}>
-            {profile?.avatar_url ? (
-              <Image
-                source={{ uri: profile.avatar_url }}
-                style={styles.avatarImage}
-                contentFit="cover"
-                transition={200}
-              />
-            ) : (
-              <Text style={[styles.avatarText, { color: primaryColor }]}>
-                {(profile?.name || (user?.user_metadata?.name as string) || MOCK_PROFILE.name).charAt(0).toUpperCase()}
-              </Text>
-            )}
-          </View>
-          <View style={styles.userTextContainer}>
-            <Text style={[styles.greeting, { color: primaryColor }]}>
-              ¡Hola, {(profile?.name || (user?.user_metadata?.name as string) || MOCK_PROFILE.name).split(' ')[0]}!
-            </Text>
-            <Text style={[styles.userRole, { color: secondaryText }]} numberOfLines={1}>
-              {profile?.title || MOCK_PROFILE.title}
-            </Text>
-          </View>
-        </View>
+          {(() => {
+            const resolvedName = (
+              profile?.name?.trim() ||
+              (user?.user_metadata?.name as string | undefined)?.trim() ||
+              (user?.user_metadata?.full_name as string | undefined)?.trim() ||
+              ''
+            );
+            const firstName = resolvedName ? resolvedName.split(/\s+/)[0] : '';
+            const greetingText = firstName ? `¡Hola, ${firstName}!` : '¡Hola!';
+            const avatarInitial = (resolvedName || user?.email?.trim() || 'U').charAt(0).toUpperCase();
+            const resolvedTitle = profile?.title?.trim() || 'Configura tu cargo en Perfil';
+
+            return (
+              <View style={styles.userHeader}>
+                <View style={[styles.avatar, { backgroundColor: primaryColor + '15', borderColor: primaryColor }]}>
+                  {profile?.avatar_url ? (
+                    <Image
+                      source={{ uri: profile.avatar_url }}
+                      style={styles.avatarImage}
+                      contentFit="cover"
+                      transition={200}
+                    />
+                  ) : (
+                    <Text style={[styles.avatarText, { color: primaryColor }]}>
+                      {avatarInitial}
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.userTextContainer}>
+                  <Text style={[styles.greeting, { color: primaryColor }]}>
+                    {greetingText}
+                  </Text>
+                  <Text style={[styles.userRole, { color: secondaryText }]} numberOfLines={1}>
+                    {resolvedTitle}
+                  </Text>
+                </View>
+              </View>
+            );
+          })()}
 
         {/* 2. Tarjeta principal: Salud de mi Red */}
         <View style={[styles.healthCardContainer, { backgroundColor: cardColor, borderColor }]}>
