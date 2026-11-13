@@ -23,7 +23,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "networking.app.lhh",
-      "versionCode": 5
+      "versionCode": 6
     },
     "web": {
       "output": "static",
