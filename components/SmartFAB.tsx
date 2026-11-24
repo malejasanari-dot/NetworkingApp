@@ -17,7 +17,6 @@ export interface SmartFABProps {
   onAddContact: () => void;
   onAddCompany: () => void;
   onAddReminder: () => void;
-  onSyncContacts: () => void;
   primaryColor?: string;
 }
 
@@ -25,7 +24,6 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
   onAddContact,
   onAddCompany,
   onAddReminder,
-  onSyncContacts,
   primaryColor = '#4F185A',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -135,17 +133,6 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
               <Text style={[styles.menuLabel, isCompactHeight && styles.menuLabelCompact, { color: textColor }]}>Nuevo Recordatorio</Text>
               <View style={[styles.iconCircle, isCompactHeight && styles.iconCircleCompact, { backgroundColor: accent2 + '15' }]}>
                 <Ionicons name="notifications-outline" size={isCompactHeight ? 17 : 20} color={accent2} />
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.menuItem, isCompactHeight && styles.menuItemCompact, { backgroundColor: cardColor, borderColor }]}
-              onPress={() => handleAction(onSyncContacts)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.menuLabel, isCompactHeight && styles.menuLabelCompact, { color: textColor }]}>Sincronizar contactos</Text>
-              <View style={[styles.iconCircle, isCompactHeight && styles.iconCircleCompact, { backgroundColor: primaryColor + '15' }]}>
-                <Ionicons name="sync-outline" size={isCompactHeight ? 17 : 20} color={primaryColor} />
               </View>
             </TouchableOpacity>
           </Animated.View>

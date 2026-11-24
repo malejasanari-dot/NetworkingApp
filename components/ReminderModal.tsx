@@ -1,26 +1,27 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  Modal, 
-  TextInput, 
-  KeyboardAvoidingView, 
-  Platform, 
-  Pressable, 
-  Keyboard, 
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Keyboard,
   Alert,
-  ScrollView
+  ScrollView,
+  type ScrollViewInstance
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring, 
-  withTiming 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming
 } from 'react-native-reanimated';
 import { useThemeColor } from '../hooks/use-theme-color';
 import { Recordatorio, Contact } from '../constants/MockData';
@@ -50,10 +51,10 @@ interface ReminderModalProps {
   contacts?: Contact[];
 }
 
-export const ReminderModal: React.FC<ReminderModalProps> = ({ 
-  isVisible, 
-  onClose, 
-  onSave, 
+export const ReminderModal: React.FC<ReminderModalProps> = ({
+  isVisible,
+  onClose,
+  onSave,
   initialData,
   initialContactId,
   contacts: propContacts,
@@ -67,6 +68,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
+
+  const modalScrollRef = useRef<ScrollViewInstance>(null);
 
   const backgroundColor = useThemeColor({}, 'card');
   const textColor = useThemeColor({}, 'text');
@@ -103,6 +106,7 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
     if (isVisible) {
       scale.value = withSpring(1, { damping: 15, stiffness: 120 });
       opacity.value = withTiming(1, { duration: 200 });
+      modalScrollRef.current?.scrollTo({ y: 0, animated: false });
     } else {
       scale.value = 0.9;
       opacity.value = 0;
@@ -117,8 +121,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
   const filteredContacts = useMemo(() => {
     if (!searchQuery.trim()) return availableContacts;
     const query = searchQuery.toLowerCase();
-    return availableContacts.filter(c => 
-      c.name.toLowerCase().includes(query) || 
+    return availableContacts.filter(c =>
+      c.name.toLowerCase().includes(query) ||
       (c.company && c.company.toLowerCase().includes(query))
     );
   }, [availableContacts, searchQuery]);
@@ -185,6 +189,12 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 
   const isSaveDisabled = selectedContactIds.length === 0;
 
+  const handleNoteFocus = () => {
+    requestAnimationFrame(() => {
+      modalScrollRef.current?.scrollToEnd({ animated: true });
+    });
+  };
+
   const handleSave = () => {
     if (isSaveDisabled) {
       Alert.alert(
@@ -221,13 +231,19 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable onPress={Keyboard.dismiss} style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+      >
         <View style={styles.overlay}>
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalContainer}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
-          >
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={Keyboard.dismiss}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar teclado"
+          />
+          <View style={styles.modalContainer} pointerEvents="box-none">
             <Animated.View style={[styles.modalContent, { backgroundColor, borderColor }, animatedContentStyle]}>
               <View style={styles.header}>
                 <Text style={[styles.title, { color: primaryColor }]}>
@@ -238,7 +254,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                 </TouchableOpacity>
               </View>
 
-              <ScrollView 
+              <ScrollView
+                ref={modalScrollRef}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 style={styles.scrollArea}
@@ -254,14 +271,14 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                   {selectedContacts.length > 0 && (
                     <View style={styles.selectedChipsContainer}>
                       {selectedContacts.map(contact => (
-                        <View 
-                          key={contact.id} 
+                        <View
+                          key={contact.id}
                           style={[styles.chip, { backgroundColor: primaryColor + '15', borderColor: primaryColor + '40' }]}
                         >
                           <Text style={[styles.chipText, { color: primaryColor }]} numberOfLines={1}>
                             {contact.name}
                           </Text>
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             onPress={() => handleRemoveContact(contact.id)}
                             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                           >
@@ -291,9 +308,9 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 
                   {/* Lista de contactos para selección */}
                   <View style={[styles.contactsListContainer, { borderColor, backgroundColor: borderColor + '05' }]}>
-                    <ScrollView 
-                      nestedScrollEnabled 
-                      style={styles.contactsScroll} 
+                    <ScrollView
+                      nestedScrollEnabled
+                      style={styles.contactsScroll}
                       keyboardShouldPersistTaps="handled"
                     >
                       {filteredContacts.length === 0 ? (
@@ -314,9 +331,9 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                               activeOpacity={0.7}
                             >
                               <View style={styles.contactItemLeft}>
-                                <View 
+                                <View
                                   style={[
-                                    styles.avatarCircle, 
+                                    styles.avatarCircle,
                                     { backgroundColor: isSelected ? primaryColor : primaryColor + '20' }
                                   ]}
                                 >
@@ -335,10 +352,10 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                                   ) : null}
                                 </View>
                               </View>
-                              <Ionicons 
-                                name={isSelected ? "checkbox" : "square-outline"} 
-                                size={22} 
-                                color={isSelected ? primaryColor : secondaryText} 
+                              <Ionicons
+                                name={isSelected ? "checkbox" : "square-outline"}
+                                size={22}
+                                color={isSelected ? primaryColor : secondaryText}
                               />
                             </TouchableOpacity>
                           );
@@ -376,8 +393,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                         />
                       </View>
                     ) : (
-                      <TouchableOpacity 
-                        style={[styles.dateSelector, { flex: 1, marginRight: 6, borderColor, backgroundColor: borderColor + '10' }]} 
+                      <TouchableOpacity
+                        style={[styles.dateSelector, { flex: 1, marginRight: 6, borderColor, backgroundColor: borderColor + '10' }]}
                         onPress={() => setDatePickerVisibility(true)}
                       >
                         <Ionicons name="calendar-outline" size={20} color={accent1} />
@@ -408,8 +425,8 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                         />
                       </View>
                     ) : (
-                      <TouchableOpacity 
-                        style={[styles.dateSelector, { flex: 1, marginLeft: 6, borderColor, backgroundColor: borderColor + '10' }]} 
+                      <TouchableOpacity
+                        style={[styles.dateSelector, { flex: 1, marginLeft: 6, borderColor, backgroundColor: borderColor + '10' }]}
                         onPress={() => setTimePickerVisibility(true)}
                       >
                         <Ionicons name="time-outline" size={20} color={accent1} />
@@ -431,24 +448,25 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                     multiline
                     numberOfLines={3}
                     textAlignVertical="top"
+                    onFocus={handleNoteFocus}
                   />
                 </View>
               </ScrollView>
 
               {/* Botones de acción */}
               <View style={styles.footer}>
-                <TouchableOpacity 
-                  style={[styles.cancelButton, { borderColor }]} 
+                <TouchableOpacity
+                  style={[styles.cancelButton, { borderColor }]}
                   onPress={onClose}
                 >
                   <Text style={[styles.cancelButtonText, { color: secondaryText }]}>Cancelar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[
-                    styles.saveButton, 
+                    styles.saveButton,
                     { backgroundColor: primaryColor },
                     isSaveDisabled && styles.disabledButton,
-                  ]} 
+                  ]}
                   onPress={handleSave}
                   disabled={isSaveDisabled}
                   activeOpacity={0.8}
@@ -457,9 +475,9 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
                 </TouchableOpacity>
               </View>
             </Animated.View>
-          </KeyboardAvoidingView>
+          </View>
         </View>
-      </Pressable>
+      </KeyboardAvoidingView>
 
       {Platform.OS !== 'web' && (
         <>
@@ -486,6 +504,9 @@ export const ReminderModal: React.FC<ReminderModalProps> = ({
 };
 
 const styles = StyleSheet.create({
+  keyboardView: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

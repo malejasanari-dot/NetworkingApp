@@ -74,6 +74,7 @@ function RootLayoutContent() {
         <Stack.Screen name="(tabs)" options={{ title: 'Inicio' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         <Stack.Screen name="contacto/[id]" options={{ title: 'Detalle de Contacto' }} />
+        <Stack.Screen name="contacto/agregar" options={{ title: 'Agregar Contacto' }} />
         <Stack.Screen name="contacto/editar/[id]" options={{ title: 'Editar Contacto' }} />
         <Stack.Screen name="contacto/importar" options={{ title: 'Importar Contactos' }} />
         <Stack.Screen name="empresa/agregar" options={{ title: 'Nueva Empresa' }} />
@@ -84,6 +85,7 @@ function RootLayoutContent() {
         <Stack.Screen name="perfil/sincronizacion" options={{ title: 'Sincronización' }} />
         <Stack.Screen name="perfil/privacidad" options={{ title: 'Privacidad y Seguridad' }} />
         <Stack.Screen name="directorio/[id]" options={{ title: 'Ficha de Candidato' }} />
+        <Stack.Screen name="seguimientos" options={{ title: 'Seguimiento' }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </>

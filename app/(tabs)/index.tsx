@@ -279,7 +279,18 @@ export default function HomeScreen() {
 
           <View style={styles.statsRow}>
             {/* Indicador A: Seguimientos pendientes */}
-            <View style={styles.statBox}>
+            <TouchableOpacity
+              style={styles.statBox}
+              onPress={() => {
+                if (Platform.OS !== 'web') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                router.push('/seguimientos');
+              }}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Seguimientos pendientes: ${totalRemindersCount}. Pulsa para ver todos.`}
+            >
               <View style={[styles.statIconBadge, { backgroundColor: accent1 + '15' }]}>
                 <Ionicons name="notifications" size={20} color={accent1} />
               </View>
@@ -289,7 +300,7 @@ export default function HomeScreen() {
               <Text style={[styles.statLabelText, { color: secondaryText }]} numberOfLines={2}>
                 {totalRemindersCount === 1 ? 'Seguimiento pendiente' : 'Seguimientos pendientes'}
               </Text>
-            </View>
+            </TouchableOpacity>
 
             {/* Divisor vertical sutil */}
             <View style={[styles.verticalDivider, { backgroundColor: borderColor + '80' }]} />

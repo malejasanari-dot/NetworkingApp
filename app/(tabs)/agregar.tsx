@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Switch, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
-import { ControlledInput } from '../../components/ui/controlled-input';
-import { CompanySelector } from '../../components/CompanySelector';
-import { useCompanies } from '../../context/CompaniesContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useNavigation, useLocalSearchParams, usePreventRemove } from 'expo-router';
+import { useLocalSearchParams, useNavigation, usePreventRemove, useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { CompanySelector } from '../../components/CompanySelector';
+import { ControlledInput } from '../../components/ui/controlled-input';
+import { ContactCategory, MANUAL_CONTACT_CATEGORIES, stripReservedDirectoryTags } from '../../constants/categories';
+import { useCompanies } from '../../context/CompaniesContext';
 import { useContacts } from '../../context/ContactsContext';
 import { useNotes } from '../../context/NotesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { parseTags } from '../../utils/tags';
-import { MANUAL_CONTACT_CATEGORIES, ContactCategory, stripReservedDirectoryTags } from '../../constants/categories';
 
 import { useToast } from '../../context/ToastContext';
 import { shadowStyle } from '../../utils/shadow';
@@ -34,6 +34,7 @@ export default function AgregarScreen() {
   const [favorito, setFavorito] = useState(false);
   const [categoria, setCategoria] = useState<ContactCategory | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmedExit, setIsConfirmedExit] = useState(false);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -80,10 +81,20 @@ export default function AgregarScreen() {
     categoria
   );
 
-  const shouldPreventRemove = hasUnsavedChanges && !isSaving;
+  const shouldPreventRemove = hasUnsavedChanges && !isSaving && !isConfirmedExit;
+
+  // La pantalla puede permanecer montada (navegador de pestañas): al quedar el formulario
+  // vacío tras una salida confirmada, se rearma la protección para la siguiente edición.
+  React.useEffect(() => {
+    if (!hasUnsavedChanges && isConfirmedExit) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsConfirmedExit(false);
+    }
+  }, [hasUnsavedChanges, isConfirmedExit]);
 
   const disablePrevention = usePreventRemove(shouldPreventRemove, ({ repeat }) => {
     if (isSavingRef.current) {
+      setIsConfirmedExit(true);
       repeat();
       return;
     }
@@ -96,6 +107,7 @@ export default function AgregarScreen() {
           text: "Salir sin guardar",
           style: "destructive",
           onPress: () => {
+            setIsConfirmedExit(true);
             resetForm();
             repeat();
           },
@@ -106,11 +118,12 @@ export default function AgregarScreen() {
 
   const handleCancel = () => {
     const navigateBack = () => {
+      setIsConfirmedExit(true);
       if (hasUnsavedChanges) {
         disablePrevention();
       }
       resetForm();
-      if (from && typeof from === 'string' && from !== '/agregar' && from !== '/(tabs)/agregar') {
+      if (from && typeof from === 'string' && from !== '/agregar' && from !== '/(tabs)/agregar' && from !== '/contacto/agregar') {
         router.replace(from as any);
       } else if (router.canGoBack()) {
         router.back();

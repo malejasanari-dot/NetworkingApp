@@ -48,7 +48,7 @@ export default function TabLayout() {
 
   const handleFABAddContact = useCallback(() => {
     router.push({
-      pathname: '/agregar',
+      pathname: '/contacto/agregar',
       params: { from: pathname },
     });
   }, [router, pathname]);
@@ -60,10 +60,6 @@ export default function TabLayout() {
   const handleFABAddReminder = useCallback(() => {
     setIsReminderModalVisible(true);
   }, []);
-
-  const handleFABSyncContacts = useCallback(() => {
-    router.push('/contacto/importar');
-  }, [router]);
 
   const handleSaveReminder = useCallback(async (data: { fecha: string; nota: string; contactIds: string[] }) => {
     for (const contactId of data.contactIds) {
@@ -191,7 +187,6 @@ export default function TabLayout() {
           onAddContact={handleFABAddContact}
           onAddCompany={handleFABAddCompany}
           onAddReminder={handleFABAddReminder}
-          onSyncContacts={handleFABSyncContacts}
           primaryColor={primaryColor}
         />
       )}

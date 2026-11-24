@@ -1,7 +1,8 @@
-import React, { useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useMemo, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, KeyboardAvoidingView, Platform, Keyboard, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
@@ -35,6 +36,7 @@ export default function ContactDetailScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
 
   const [isModalVisible, setIsModalVisible] = React.useState(false);
   const [editingReminder, setEditingReminder] = React.useState<Recordatorio | undefined>(undefined);
@@ -42,6 +44,10 @@ export default function ContactDetailScreen() {
   // States for new note
   const [newNoteContent, setNewNoteContent] = React.useState('');
   const [editingNoteId, setEditingNoteId] = React.useState<string | null>(null);
+
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
+  const noteInputRef = useRef<TextInputInstance>(null);
+  const noteSectionY = useRef<number>(0);
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -186,19 +192,37 @@ export default function ContactDetailScreen() {
         toast.success('Nota guardada');
       }
       setNewNoteContent('');
+      Keyboard.dismiss();
     } catch (error: any) {
       toast.error(error?.message || 'No se pudo guardar la nota.');
     }
   };
 
+  const scrollToNoteSection = () => {
+    // Usar requestAnimationFrame para asegurar que el teclado/layout ya procesaron el evento
+    requestAnimationFrame(() => {
+      scrollViewRef.current?.scrollTo({
+        y: Math.max(0, noteSectionY.current - 16),
+        animated: true,
+      });
+    });
+  };
+
   const startEditingNote = (note: Nota) => {
     setNewNoteContent(note.contenido);
     setEditingNoteId(note.id);
+    noteInputRef.current?.focus();
+    scrollToNoteSection();
   };
 
   const cancelEditingNote = () => {
     setNewNoteContent('');
     setEditingNoteId(null);
+    Keyboard.dismiss();
+  };
+
+  const handleNoteInputFocus = () => {
+    scrollToNoteSection();
   };
 
   const handleDeleteNote = (noteId: string) => {
@@ -233,6 +257,18 @@ export default function ContactDetailScreen() {
   }, []);
 
   const handleDeleteReminder = useCallback((reminderId: string) => {
+    if (Platform.OS === 'web') {
+      const confirmed = typeof window !== 'undefined' && window.confirm
+        ? window.confirm('¿Estás seguro de que deseas eliminar este recordatorio?')
+        : true;
+      if (confirmed) {
+        deleteReminder(reminderId).then(() => {
+          toast.info('Recordatorio eliminado');
+        });
+      }
+      return;
+    }
+
     Alert.alert(
       "Eliminar Recordatorio",
       "¿Estás seguro de que deseas eliminar este recordatorio?",
@@ -291,8 +327,9 @@ export default function ContactDetailScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ScrollView
+        ref={scrollViewRef}
         style={[styles.container, { backgroundColor }]}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
@@ -460,17 +497,24 @@ export default function ContactDetailScreen() {
           )}
         </View>
 
-        <View style={styles.section}>
+        <View
+          style={styles.section}
+          onLayout={(e) => {
+            noteSectionY.current = e.nativeEvent.layout.y;
+          }}
+        >
           <Text style={[styles.sectionTitle, { color: primaryColor, borderBottomColor: borderColor }]}>Historial de Interacciones</Text>
 
           <View style={[styles.noteInputContainer, { backgroundColor: cardColor, borderColor }]}>
             <TextInput
+              ref={noteInputRef}
               style={[styles.noteInput, { color: textColor }]}
               placeholder={editingNoteId ? "Editando nota..." : "Escribe una nueva nota de tu interacción..."}
               placeholderTextColor={secondaryText}
               multiline
               value={newNoteContent}
               onChangeText={setNewNoteContent}
+              onFocus={handleNoteInputFocus}
             />
             <View style={styles.noteInputFooter}>
               {editingNoteId && (
@@ -615,7 +659,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
-    paddingBottom: 60,
   },
   innerContent: {
     width: '100%',
