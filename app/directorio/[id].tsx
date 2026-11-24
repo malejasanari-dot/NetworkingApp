@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -31,6 +32,7 @@ import { shadowStyle } from '../../utils/shadow';
 
 export default function CandidateDetailScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const colorScheme = useColorScheme() ?? 'light';
@@ -327,7 +329,7 @@ export default function CandidateDetailScreen() {
         ) : candidate ? (
           // Ficha del Candidato Completa
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 + insets.bottom }]}
             showsVerticalScrollIndicator={false}
           >
             {/* 1. Tarjeta Principal / Hero */}
@@ -574,7 +576,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
     maxWidth: 720,
     width: '100%',
     alignSelf: 'center',

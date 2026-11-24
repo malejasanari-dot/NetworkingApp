@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { ControlledInput } from '../../../components/ui/controlled-input';
 import { useRouter, useLocalSearchParams, useNavigation, usePreventRemove } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../../context/CompaniesContext';
 import { useContacts } from '../../../context/ContactsContext';
@@ -16,6 +17,7 @@ export default function EditarEmpresaScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
   const { companies, updateCompany } = useCompanies();
   const { contacts, updateContact } = useContacts();
   
@@ -191,7 +193,7 @@ export default function EditarEmpresaScreen() {
     >
       <ScrollView 
         style={[styles.scroll, { backgroundColor }]}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
@@ -301,7 +303,6 @@ const styles = StyleSheet.create({
     maxWidth: 640,
     alignSelf: 'center',
     padding: 24,
-    paddingBottom: 60,
   },
   header: {
     marginBottom: 32,

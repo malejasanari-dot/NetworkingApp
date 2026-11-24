@@ -1,6 +1,7 @@
 import React, { useLayoutEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../context/CompaniesContext';
 import { useContacts } from '../../context/ContactsContext';
@@ -16,6 +17,7 @@ export default function EmpresaDetailScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
 
   const backgroundColor = useThemeColor({}, 'background');
   const cardColor = useThemeColor({}, 'card');
@@ -89,7 +91,10 @@ export default function EmpresaDetailScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor }]} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={[styles.container, { backgroundColor }]}
+      contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
+    >
       <View style={styles.header}>
         <TouchableOpacity 
           style={[styles.editButton, { backgroundColor: primaryColor + '15' }]} 

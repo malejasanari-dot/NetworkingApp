@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Paths, File } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -26,6 +27,7 @@ const escapeCsv = (val?: string | null): string => {
 export default function SincronizacionScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { contacts, updateContact } = useContacts();
   const { companies, syncCompanies } = useCompanies();
 
@@ -250,7 +252,7 @@ export default function SincronizacionScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
       showsVerticalScrollIndicator={false}
     >
       {/* Encabezado Introductorio */}
@@ -467,7 +469,6 @@ const styles = StyleSheet.create({
     maxWidth: 640,
     alignSelf: 'center',
     padding: 20,
-    paddingBottom: 40,
   },
   headerContainer: {
     alignItems: 'center',

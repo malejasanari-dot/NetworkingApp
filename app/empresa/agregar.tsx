@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { ControlledInput } from '../../components/ui/controlled-input';
 import { useRouter, useNavigation, usePreventRemove } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCompanies } from '../../context/CompaniesContext';
 import { useThemeColor } from '../../hooks/use-theme-color';
@@ -14,6 +15,7 @@ export default function AgregarEmpresaScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
   const { addCompany } = useCompanies();
   
   const [name, setName] = useState('');
@@ -126,7 +128,7 @@ export default function AgregarEmpresaScreen() {
     >
       <ScrollView 
         style={[styles.scroll, { backgroundColor }]}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
@@ -215,7 +217,6 @@ const styles = StyleSheet.create({
     maxWidth: 640,
     alignSelf: 'center',
     padding: 24,
-    paddingBottom: 60,
   },
   header: {
     marginBottom: 32,

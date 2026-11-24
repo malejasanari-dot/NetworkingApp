@@ -4,6 +4,7 @@ import { ControlledInput } from '../../../components/ui/controlled-input';
 import { CompanySelector } from '../../../components/CompanySelector';
 import { useCompanies } from '../../../context/CompaniesContext';
 import { useLocalSearchParams, useRouter, useNavigation, usePreventRemove } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useContacts } from '../../../context/ContactsContext';
 import { useThemeColor } from '../../../hooks/use-theme-color';
 import { parseTags, formatTags } from '../../../utils/tags';
@@ -24,6 +25,7 @@ export default function EditarScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
   const { contacts, updateContact } = useContacts();
   const { companies, syncContactCompanies } = useCompanies();
@@ -233,7 +235,7 @@ export default function EditarScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
@@ -420,7 +422,6 @@ const styles = StyleSheet.create({
     maxWidth: 640,
     alignSelf: 'center',
     padding: 20,
-    paddingBottom: 60,
   },
   header: {
     alignItems: 'center',

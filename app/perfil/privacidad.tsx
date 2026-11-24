@@ -11,12 +11,14 @@ import {
   Linking,
 } from 'react-native';
 import { useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { shadowStyle } from '../../utils/shadow';
 
 export default function PrivacidadSeguridadScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   // Colores del sistema de temas existente
   const backgroundColor = useThemeColor({}, 'background');
@@ -78,7 +80,7 @@ export default function PrivacidadSeguridadScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
       showsVerticalScrollIndicator={false}
     >
       {/* Encabezado Introductorio */}
@@ -240,7 +242,6 @@ const styles = StyleSheet.create({
     maxWidth: 640,
     alignSelf: 'center',
     padding: 20,
-    paddingBottom: 40,
   },
   headerContainer: {
     alignItems: 'center',

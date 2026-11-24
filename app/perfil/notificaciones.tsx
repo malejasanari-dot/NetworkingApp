@@ -9,6 +9,7 @@ import {
   Linking,
 } from 'react-native';
 import { useNavigation } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from '../../hooks/use-theme-color';
 import { useNotifications, PermissionStatus } from '../../hooks/useNotifications';
@@ -16,6 +17,7 @@ import { shadowStyle } from '../../utils/shadow';
 
 export default function NotificacionesScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { permissionStatus, requestPermission, isAvailable } = useNotifications();
 
   // Colores del sistema de temas existente
@@ -66,7 +68,7 @@ export default function NotificacionesScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
       showsVerticalScrollIndicator={false}
     >
       {/* 1. Encabezado Introductorio */}
@@ -305,7 +307,6 @@ const styles = StyleSheet.create({
     maxWidth: 640,
     alignSelf: 'center',
     padding: 20,
-    paddingBottom: 40,
   },
   headerContainer: {
     alignItems: 'center',
