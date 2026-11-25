@@ -16,4 +16,22 @@ const directorioRateLimiter = rateLimit({
   }
 });
 
+/**
+ * Limitador de frecuencia estricto para endpoints de validación/autenticación.
+ * Previene ataques de fuerza bruta y enumeración de credenciales.
+ */
+const authRateLimiter = rateLimit({
+  windowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000, // 15 minutos por defecto
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX, 10) || 15, // Máximo 15 intentos por ventana
+  standardHeaders: true,
+  legacyHeaders: false,
+  statusCode: 429,
+  message: {
+    success: false,
+    error: 'Demasiados intentos de validación. Por favor intente más tarde.'
+  }
+});
+
+directorioRateLimiter.authRateLimiter = authRateLimiter;
+
 module.exports = directorioRateLimiter;

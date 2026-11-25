@@ -73,7 +73,11 @@ export default function LoginScreen() {
     setIsSubmitting(true);
 
     try {
-      const { error } = await login(trimmedEmail, trimmedPassword);
+      const { error } = await login(trimmedEmail, trimmedPassword, {
+        onCandidateFound: () => {
+          toast.success('Usuario encontrado');
+        },
+      });
       if (error) {
         toast.error('Correo o contraseña incorrectos.');
       }

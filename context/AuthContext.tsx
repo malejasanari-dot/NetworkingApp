@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { getBaseApiUrl } from '../services/directoryApi';
 
 import { decodeBase64ToArrayBuffer } from '../utils/base64';
 
@@ -26,7 +28,11 @@ interface AuthContextType {
   session: Session | null;
   profile: UserProfile | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ error: Error | null }>;
+  login: (
+    email: string,
+    password: string,
+    options?: { onCandidateFound?: () => void }
+  ) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<{ error: Error | null }>;
   uploadAvatar: (base64OrArrayBuffer: string | ArrayBuffer) => Promise<{ avatarUrl: string | null; error: Error | null }>;
@@ -136,19 +142,93 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [fetchProfile]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (
+    email: string,
+    password: string,
+    options?: { onCandidateFound?: () => void }
+  ) => {
     try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedPassword = password.trim();
+
+      // 1. Intentar primero el inicio de sesión directo en Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: normalizedEmail,
+        password: normalizedPassword,
       });
-      if (error) {
-        return { error };
+
+      if (!error && data?.session) {
+        setSession(data.session);
+        setUser(data.user);
+        if (data.user) {
+          await fetchProfile(data.user);
+        }
+        return { error: null };
       }
-      setSession(data.session);
-      setUser(data.user);
-      if (data.user) {
-        await fetchProfile(data.user);
+
+      // 2. Si falla por credenciales no registradas, validar candidato en MySQL y crear cuenta si aún no existe
+      const baseUrl = getBaseApiUrl();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      let activatePayload: any = null;
+      try {
+        const response = await fetch(`${baseUrl}/api/auth/activate-candidate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            email: normalizedEmail,
+            cedula: normalizedPassword,
+          }),
+          signal: controller.signal,
+        });
+
+        activatePayload = await response.json().catch(() => null);
+
+        if (!response.ok || !activatePayload?.success || !activatePayload?.authorized) {
+          return { error: error || new Error('Correo o contraseña incorrectos.') };
+        }
+      } catch {
+        // Si el backend no responde o falla la red, devolver el error de autenticación original
+        return { error: error || new Error('Error de conexión') };
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      // Si el usuario ya existía en Supabase Auth y falló signInWithPassword en el paso 1,
+      // no se creó otra cuenta y las credenciales de Supabase son inválidas.
+      if (activatePayload.alreadyExists && !activatePayload.created) {
+        return { error: error || new Error('Correo o contraseña incorrectos.') };
+      }
+
+      // 3. Candidato validado en MySQL y usuario creado en Supabase Auth:
+      // notificar brevemente «Usuario encontrado» y continuar automáticamente con signInWithPassword
+      options?.onCandidateFound?.();
+
+      const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: normalizedPassword,
+      });
+
+      if (retryError || !retryData?.session) {
+        return { error: retryError || new Error('No se pudo iniciar sesión automáticamente.') };
+      }
+
+      if (retryData.user) {
+        try {
+          await AsyncStorage.setItem(`@contacts_migrated_to_supabase_${retryData.user.id}`, 'true');
+          await AsyncStorage.setItem(`@reminders_migrated_to_supabase_${retryData.user.id}`, 'true');
+        } catch {
+          // Ignorar errores de almacenamiento local
+        }
+      }
+      setSession(retryData.session);
+      setUser(retryData.user);
+      if (retryData.user) {
+        await fetchProfile(retryData.user);
       }
       return { error: null };
     } catch (err: any) {

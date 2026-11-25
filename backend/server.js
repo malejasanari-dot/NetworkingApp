@@ -103,6 +103,10 @@ app.get('/api/db-test', async (req, res) => {
 const directorioRouter = require('./routes/directorio');
 app.use('/api/directorio', directorioRouter);
 
+// Endpoint 4: Validación previa de candidatos LHH para inicio de sesión
+const authRouter = require('./routes/auth');
+app.use('/api/auth', authRouter);
+
 // Manejo centralizado de errores (incluyendo denegaciones de CORS)
 app.use((err, req, res, next) => {
   if (err && err.message && err.message.includes('CORS')) {

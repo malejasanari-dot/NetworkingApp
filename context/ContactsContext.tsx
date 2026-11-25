@@ -27,6 +27,7 @@ interface ContactsContextData {
 const ContactsContext = createContext<ContactsContextData>({} as ContactsContextData);
 
 const STORAGE_KEY = '@personal_networking_contacts';
+const LEGACY_CONTACTS_OWNER_KEY = '@personal_networking_contacts_owner';
 const LEGACY_EXTRA_FIELDS_KEY = '@personal_networking_contacts_extra';
 const USER_EXTRA_FIELDS_KEY = (userId: string) => `@personal_networking_contacts_extra_${userId}`;
 const MIGRATION_FLAG_KEY = (userId: string) => `@contacts_migrated_to_supabase_${userId}`;
@@ -117,6 +118,37 @@ export const checkDbColumnsSupport = async (forceRefresh = false): Promise<{ car
   return { cargoRol: isCargoRolSupportedInDb, directorioId: isDirectorioIdSupportedInDb, linkedin: isLinkedinSupportedInDb };
 };
 
+const hasOtherUserOnDevice = async (currentUserId: string): Promise<boolean> => {
+  try {
+    const ownerId = await AsyncStorage.getItem(LEGACY_CONTACTS_OWNER_KEY);
+    if (ownerId && ownerId !== currentUserId) {
+      return true;
+    }
+
+    const allKeys = await AsyncStorage.getAllKeys();
+    const userScopedPrefixes = [
+      '@contacts_migrated_to_supabase_',
+      '@personal_networking_contacts_extra_',
+      '@personal_networking_reminders_cache_',
+      '@reminders_migrated_to_supabase_',
+    ];
+
+    for (const key of allKeys) {
+      for (const prefix of userScopedPrefixes) {
+        if (key.startsWith(prefix)) {
+          const keyUserId = key.slice(prefix.length);
+          if (keyUserId && keyUserId !== currentUserId) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 const getStoredExtraFields = async (userId?: string): Promise<Record<string, ContactExtra>> => {
   if (!userId) return {};
   try {
@@ -124,9 +156,9 @@ const getStoredExtraFields = async (userId?: string): Promise<Record<string, Con
     const rawUser = await AsyncStorage.getItem(userKey);
     let userExtras: Record<string, ContactExtra> = rawUser ? JSON.parse(rawUser) : {};
 
-    // Migración no destructiva desde la clave legacy global si existe
+    // Migración no destructiva desde la clave legacy global solo si pertenece al usuario actual
     const rawLegacy = await AsyncStorage.getItem(LEGACY_EXTRA_FIELDS_KEY);
-    if (rawLegacy) {
+    if (rawLegacy && !(await hasOtherUserOnDevice(userId))) {
       try {
         const legacyExtras: Record<string, ContactExtra> = JSON.parse(rawLegacy);
         if (legacyExtras && typeof legacyExtras === 'object' && Object.keys(legacyExtras).length > 0) {
@@ -282,10 +314,28 @@ const updateLocalReferencesForContactId = async (userId: string, oldId: string, 
   }
 };
 
-const migrateLocalContactsIfNeeded = async (userId: string, currentDbContacts: any[]) => {
+const migrateLocalContactsIfNeeded = async (
+  userId: string,
+  currentDbContacts: any[],
+  isNewCandidateAccount = false
+) => {
   try {
     const isCompleted = await AsyncStorage.getItem(MIGRATION_FLAG_KEY(userId));
     if (isCompleted === 'true') {
+      return currentDbContacts;
+    }
+
+    // 1. Si el usuario ya tiene contactos en Supabase, recuperar directamente sus datos
+    // sin volver a insertar registros locales heredados.
+    if (Array.isArray(currentDbContacts) && currentDbContacts.length > 0) {
+      await AsyncStorage.setItem(MIGRATION_FLAG_KEY(userId), 'true');
+      return currentDbContacts;
+    }
+
+    // 2. Usuarios nuevos (creados mediante AUTH-03) o dispositivos donde los datos locales
+    // pertenecen a otro usuario no deben heredar ni migrar @personal_networking_contacts.
+    if (isNewCandidateAccount || (await hasOtherUserOnDevice(userId))) {
+      await AsyncStorage.setItem(MIGRATION_FLAG_KEY(userId), 'true');
       return currentDbContacts;
     }
 
@@ -299,6 +349,7 @@ const migrateLocalContactsIfNeeded = async (userId: string, currentDbContacts: a
     try {
       localContacts = JSON.parse(storedStr);
     } catch {
+      await AsyncStorage.setItem(MIGRATION_FLAG_KEY(userId), 'true');
       return currentDbContacts;
     }
 
@@ -307,14 +358,19 @@ const migrateLocalContactsIfNeeded = async (userId: string, currentDbContacts: a
       return currentDbContacts;
     }
 
-    const realLocalContacts = localContacts.filter(c => c && c.name && !isPureMockContact(c));
+    // Filtrar mocks y contactos que tengan un user_id explícito de otro usuario
+    const realLocalContacts = localContacts.filter((c: any) => {
+      if (!c || !c.name || isPureMockContact(c)) return false;
+      const contactOwner = c.user_id || c.userId;
+      if (contactOwner && contactOwner !== userId) return false;
+      return true;
+    });
 
     if (realLocalContacts.length === 0) {
       await AsyncStorage.setItem(MIGRATION_FLAG_KEY(userId), 'true');
       return currentDbContacts;
     }
 
-    let allMigratedSuccessfully = true;
     const existingDbIds = new Set(currentDbContacts.map(c => c.id));
     const existingDbPhones = new Set(currentDbContacts.map(c => normalizePhone(c.phone)).filter(Boolean));
     const existingDbNames = new Set(currentDbContacts.map(c => c.name.trim().toLowerCase()));
@@ -324,8 +380,9 @@ const migrateLocalContactsIfNeeded = async (userId: string, currentDbContacts: a
       if (!contact || !contact.name) continue;
 
       const normPhone = normalizePhone(contact.phone);
-      
-      const isAlreadyInDbForUser = existingDbIds.has(contact.id) || 
+
+      const isAlreadyInDbForUser =
+        existingDbIds.has(contact.id) ||
         (normPhone && existingDbPhones.has(normPhone)) ||
         (existingDbNames.has(contact.name.trim().toLowerCase()) && (!normPhone || existingDbPhones.has(normPhone)));
 
@@ -333,7 +390,7 @@ const migrateLocalContactsIfNeeded = async (userId: string, currentDbContacts: a
         continue;
       }
 
-      let targetId = contact.id;
+      const targetId = contact.id;
       const { data: existingWithId } = await supabase
         .from('contacts')
         .select('id, user_id')
@@ -343,28 +400,32 @@ const migrateLocalContactsIfNeeded = async (userId: string, currentDbContacts: a
       if (existingWithId) {
         if (existingWithId.user_id === userId) {
           continue;
-        } else {
-          targetId = generateId(i);
-          await updateLocalReferencesForContactId(userId, contact.id, targetId);
         }
+        // Si pertenece a otro usuario, no migrar contactos ajenos
+        continue;
       }
 
       const rowToInsert = mapContactToRow({ ...contact, id: targetId }, userId);
       const { error: insertError } = await supabase.from('contacts').insert(rowToInsert);
 
       if (insertError) {
+        // 23505 (contacts_pkey): el ID ya existe en Supabase bajo otro user_id (oculto por RLS en SELECT).
+        // Esto indica que los contactos locales de @personal_networking_contacts ya fueron migrados
+        // por otro usuario en este dispositivo; se omite para mantener el aislamiento por usuario.
+        if ((insertError as any).code === '23505') {
+          continue;
+        }
         console.error(`Error migrando contacto ${contact.name}:`, insertError);
-        allMigratedSuccessfully = false;
       } else {
+        await AsyncStorage.setItem(LEGACY_CONTACTS_OWNER_KEY, userId);
         existingDbIds.add(targetId);
         if (normPhone) existingDbPhones.add(normPhone);
         existingDbNames.add(contact.name.trim().toLowerCase());
       }
     }
 
-    if (allMigratedSuccessfully) {
-      await AsyncStorage.setItem(MIGRATION_FLAG_KEY(userId), 'true');
-    }
+    // Marcar la migración como completada para evitar reintentos infinitos en próximos inicios de sesión
+    await AsyncStorage.setItem(MIGRATION_FLAG_KEY(userId), 'true');
 
     const { data: updatedDbContacts } = await supabase
       .from('contacts')
@@ -539,7 +600,8 @@ export const ContactsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       let finalRows = data || [];
-      finalRows = await migrateLocalContactsIfNeeded(user.id, finalRows);
+      const isNewCandidateAccount = Boolean(user?.user_metadata?.id_sistema);
+      finalRows = await migrateLocalContactsIfNeeded(user.id, finalRows, isNewCandidateAccount);
 
       let mappedContacts = finalRows.map(row => mapRowToContact(row, localExtras));
       mappedContacts = await migrateNotesLinkedInIfNeeded(user.id, mappedContacts, localExtras);
