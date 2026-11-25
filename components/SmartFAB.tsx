@@ -35,8 +35,9 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
   const accent1 = useThemeColor({}, 'accent1');
   const accent2 = useThemeColor({}, 'accent2');
 
-  const { height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isCompactHeight = windowHeight < 420;
+  const rightOffset = windowWidth > 760 ? Math.max(20, (windowWidth - 760) / 2 + 16) : 20;
 
   const bottomOffset = insets.bottom + (isCompactHeight ? (Platform.OS === 'ios' ? 56 : 50) : (Platform.OS === 'ios' ? 70 : 64));
   const animationProgress = useSharedValue(0);
@@ -100,7 +101,7 @@ export const SmartFAB: React.FC<SmartFABProps> = React.memo(({
         </Pressable>
       )}
 
-      <View style={[styles.container, { bottom: bottomOffset, pointerEvents: 'box-none' } as any]}>
+      <View style={[styles.container, { bottom: bottomOffset, right: rightOffset, pointerEvents: 'box-none' } as any]}>
         {isOpen && (
           <Animated.View style={[styles.menuContainer, isCompactHeight && styles.menuContainerCompact, menuAnimatedStyle]}>
             <TouchableOpacity

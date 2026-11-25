@@ -103,6 +103,7 @@ export function CompanySelector({
               paddingBottom: Math.max(insets.bottom, 16),
             }
           ]}>
+            <View style={styles.modalInner}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: primaryColor }]}>{label || 'Seleccionar Empresa'}</Text>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -171,6 +172,7 @@ export function CompanySelector({
               );
             }}
           />
+            </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -198,6 +200,12 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     paddingHorizontal: 20,
+  },
+  modalInner: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   modalHeader: {
     flexDirection: 'row',

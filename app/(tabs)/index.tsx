@@ -18,6 +18,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
   const isWide = windowWidth >= 600;
+  const isTablet = windowWidth >= 768;
 
   const { user, profile } = useAuth();
   const { contacts, refreshContacts } = useContacts();
@@ -231,7 +232,7 @@ export default function HomeScreen() {
           />
         }
       >
-        <View style={styles.innerContainer}>
+        <View style={[styles.innerContainer, isWide && styles.innerContainerWide]}>
           {/* 1. Encabezado elegante y compacto */}
           {(() => {
             const resolvedName = (
@@ -331,8 +332,10 @@ export default function HomeScreen() {
           <CategoryDistributionBar contacts={contacts} />
         </View>
 
+        {/* 4 y 5. Últimos contactos y empresas agregadas (2 columnas en tablet) */}
+        <View style={isTablet ? styles.twoColumnRow : undefined}>
         {/* 4. Últimos contactos agregados */}
-        <View style={styles.section}>
+        <View style={[styles.section, isTablet && styles.twoColumnItem]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: primaryColor }]}>Últimos contactos agregados</Text>
             <TouchableOpacity 
@@ -378,7 +381,7 @@ export default function HomeScreen() {
         </View>
 
         {/* 5. Últimas empresas agregadas */}
-        <View style={styles.section}>
+        <View style={[styles.section, isTablet && styles.twoColumnItem]}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: primaryColor }]}>Últimas empresas agregadas</Text>
             <TouchableOpacity 
@@ -421,6 +424,7 @@ export default function HomeScreen() {
               </Text>
             </View>
           )}
+        </View>
         </View>
 
         {/* 6. Próximos recordatorios */}
@@ -501,6 +505,17 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 720,
     alignSelf: 'center',
+  },
+  innerContainerWide: {
+    maxWidth: 840,
+  },
+  twoColumnRow: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'flex-start',
+  },
+  twoColumnItem: {
+    flex: 1,
   },
   userHeader: {
     flexDirection: 'row',
